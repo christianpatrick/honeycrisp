@@ -123,6 +123,16 @@ public enum ToolRegistry {
                     : "\(client) wants to send a mail to \(recipients)."
             }
         ),
+        "mail_mark_read": Definition(
+            description:
+                "Mark a mail message read, or a whole thread with thread_id. Mail makes the change itself and syncs it to your mail server.",
+            schema: schema(
+                properties: [
+                    "message_id": prop("string", "One message id from mail_search or mail_read."),
+                    "thread_id": prop(
+                        "string", "Or a thread id to mark every message in the conversation."),
+                ])
+        ),
         "reminders_list": Definition(
             description:
                 "List reminders, optionally from one list, optionally including completed ones.",

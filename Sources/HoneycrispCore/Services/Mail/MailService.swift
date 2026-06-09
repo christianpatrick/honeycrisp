@@ -98,6 +98,8 @@ public protocol MailServicing: Sendable {
     func messageSummary(id: String) async throws -> MailMessageSummary?
     func draft(_ draft: MailDraft) async throws -> MailComposeReceipt
     func send(_ draft: MailDraft) async throws -> MailComposeReceipt
+    /// Returns how many messages were marked.
+    func markRead(messageIDs: [String]) async throws -> Int
 }
 
 /// Sub-seams: the read side over the Envelope Index, and the compose side
@@ -112,20 +114,34 @@ public protocol MailComposing: Sendable {
     func compose(_ draft: MailDraft, send: Bool) async throws -> MailComposeReceipt
 }
 
+public protocol MailReadMarking: Sendable {
+    func markRead(messageIDs: [String]) async throws -> Int
+}
+
 /// The real composition: Envelope Index plus .emlx for reads, raw Apple
 /// events for drafts and sends.
 public struct MailService: MailServicing {
     private let reader: any EnvelopeIndexReading
     private let composer: any MailComposing
+    private let marker: any MailReadMarking
 
-    public init(reader: any EnvelopeIndexReading, composer: any MailComposing) {
+    public init(
+        reader: any EnvelopeIndexReading,
+        composer: any MailComposing,
+        marker: any MailReadMarking
+    ) {
         self.reader = reader
         self.composer = composer
+        self.marker = marker
     }
 
     /// The production wiring.
     public init() {
-        self.init(reader: MailDatabase(), composer: AppleEventMailComposer())
+        self.init(
+            reader: MailDatabase(),
+            composer: AppleEventMailComposer(),
+            marker: AppleEventMailReadMarker()
+        )
     }
 
     public func search(query: String, mailbox: String?, limit: Int) async throws
@@ -148,5 +164,9 @@ public struct MailService: MailServicing {
 
     public func send(_ draft: MailDraft) async throws -> MailComposeReceipt {
         try await composer.compose(draft, send: true)
+    }
+
+    public func markRead(messageIDs: [String]) async throws -> Int {
+        try await marker.markRead(messageIDs: messageIDs)
     }
 }

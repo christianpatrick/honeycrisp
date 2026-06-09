@@ -22,9 +22,42 @@ public struct MailTools: Sendable {
             return try await compose(arguments, send: false)
         case "send":
             return try await compose(arguments, send: true)
+        case "mark_read":
+            return try await markRead(arguments, defaultLimit: defaultLimit)
         default:
             throw ToolFailure("Mail cannot do \"\(action)\".")
         }
+    }
+
+    private func markRead(_ arguments: [String: Value], defaultLimit: Int) async throws
+        -> ToolOutcome
+    {
+        let messageID = string(arguments["message_id"])
+        let threadID = string(arguments["thread_id"])
+        let ids: [String]
+        let what: String
+        if let messageID, !messageID.isEmpty {
+            ids = [messageID]
+            what = "the message"
+        } else if let threadID, !threadID.isEmpty {
+            let thread = try await service.thread(id: threadID, limit: max(defaultLimit, 100))
+            ids = thread.messages.map(\.id)
+            what = "the thread \u{201C}\(thread.subject)\u{201D}"
+        } else {
+            throw ToolFailure(
+                "mail_mark_read needs a message_id from mail_search, or a thread_id to mark the whole conversation."
+            )
+        }
+        let marked = try await service.markRead(messageIDs: ids)
+        return ToolOutcome(
+            content: try ToolJSON.encode(["marked": marked]),
+            auditAction: "Marked \(what) as read",
+            auditSummary:
+                "Updated read status on \(marked) message\(marked == 1 ? "" : "s"). Mail syncs the change to your mail server.",
+            auditRows: [
+                AuditDetailRow(label: "Marked", value: "\(marked) message\(marked == 1 ? "" : "s")")
+            ]
+        )
     }
 
     private func search(_ arguments: [String: Value], defaultLimit: Int) async throws

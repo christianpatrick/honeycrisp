@@ -3,10 +3,10 @@ import HoneycrispCore
 
 @Suite("Action catalog")
 struct ActionCatalogTests {
-    @Test("sixteen actions with the designed per-app counts")
+    @Test("seventeen actions with the designed per-app counts")
     func actionCounts() {
-        #expect(ActionCatalog.all.count == 16)
-        #expect(ActionCatalog.actions(for: .mail).count == 4)
+        #expect(ActionCatalog.all.count == 17)
+        #expect(ActionCatalog.actions(for: .mail).count == 5)
         #expect(ActionCatalog.actions(for: .reminders).count == 4)
         #expect(ActionCatalog.actions(for: .messages).count == 5)
         #expect(ActionCatalog.actions(for: .contacts).count == 3)
@@ -30,6 +30,12 @@ struct ActionCatalogTests {
         #expect(markRead.kind == .write)
         #expect(markRead.defaultOn == false)
         #expect(markRead.requiresApproval == false)
+
+        let mailMarkRead = try #require(ActionCatalog.descriptor(app: .mail, action: "mark_read"))
+        #expect(mailMarkRead.label == "Mark as read")
+        #expect(mailMarkRead.kind == .write)
+        #expect(mailMarkRead.defaultOn == false)
+        #expect(mailMarkRead.requiresApproval == false)
 
         let complete = try #require(ActionCatalog.descriptor(app: .reminders, action: "complete"))
         #expect(complete.label == "Mark as done")

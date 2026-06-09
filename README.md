@@ -44,7 +44,7 @@ Honeycrisp speaks to four of the apps I live in every day. Each one is a real, f
 
 | App | What your assistant can do |
 | --- | --- |
-| <img src="assets/app-icons/mail.svg" width="20" align="center"> **Mail** | Pull the thread you half remember, summarize it, and draft a reply that sounds like you. |
+| <img src="assets/app-icons/mail.svg" width="20" align="center"> **Mail** | Pull the thread you half remember, summarize it, draft a reply that sounds like you, and mark it read when you are done. |
 | <img src="assets/app-icons/reminders.svg" width="20" align="center"> **Reminders** | Check what is due today, capture the thing you just thought of, and tick items off in the conversation. |
 | <img src="assets/app-icons/messages.svg" width="20" align="center"> **Messages** | Catch up on the threads you missed and send a reply without reaching for your phone. |
 | <img src="assets/app-icons/contacts.svg" width="20" align="center"> **Contacts** | Look someone up, fix a misspelled name, or save a new face the moment it comes up. |

@@ -56,3 +56,4 @@ Checkable statements that make this task done.
 | HC-018 | Settings opens on the current Space | done |
 | HC-019 | Probe the Envelope Index recipients schema at runtime | done |
 | HC-020 | Readable text from HTML-only mail | done |
+| HC-021 | Mark mail as read | done |

@@ -20,6 +20,7 @@ private actor FakeMailService: MailServicing {
     private(set) var summaryCalls: [String] = []
     private(set) var drafts: [MailDraft] = []
     private(set) var sends: [MailDraft] = []
+    private(set) var markedRead: [[String]] = []
 
     var searchResult: [MailMessageSummary] = []
     var threadResult = MailThread(
@@ -63,6 +64,11 @@ private actor FakeMailService: MailServicing {
     func send(_ draft: MailDraft) async throws -> MailComposeReceipt {
         sends.append(draft)
         return MailComposeReceipt(to: draft.to, cc: draft.cc, subject: draft.subject, sent: true)
+    }
+
+    func markRead(messageIDs: [String]) async throws -> Int {
+        markedRead.append(messageIDs)
+        return messageIDs.count
     }
 }
 
@@ -185,6 +191,36 @@ struct MailToolsTests {
         await #expect(throws: ToolFailure.self) {
             _ = try await tools.execute(
                 action: "draft", arguments: ["body": "hi"], defaultLimit: 20)
+        }
+    }
+
+    @Test("mark_read passes a message id straight through")
+    func markReadByMessage() async throws {
+        let service = FakeMailService()
+        let tools = MailTools(service: service)
+        let outcome = try await tools.execute(
+            action: "mark_read", arguments: ["message_id": "159538"], defaultLimit: 20)
+        #expect(await service.markedRead == [["159538"]])
+        #expect(outcome.auditAction.contains("read"))
+        #expect(outcome.auditSummary.contains("Mail syncs"))
+    }
+
+    @Test("mark_read with a thread id marks every message in the conversation")
+    func markReadByThread() async throws {
+        let service = FakeMailService()
+        let tools = MailTools(service: service)
+        let outcome = try await tools.execute(
+            action: "mark_read", arguments: ["thread_id": "9001"], defaultLimit: 20)
+        #expect(await service.threadCalls.first?.id == "9001")
+        #expect(await service.markedRead == [["101", "102"]])
+        #expect(outcome.auditAction.contains("Re: Q3 planning"))
+    }
+
+    @Test("mark_read needs exactly one of message_id or thread_id")
+    func markReadValidation() async {
+        let tools = MailTools(service: FakeMailService())
+        await #expect(throws: ToolFailure.self) {
+            _ = try await tools.execute(action: "mark_read", arguments: [:], defaultLimit: 20)
         }
     }
 

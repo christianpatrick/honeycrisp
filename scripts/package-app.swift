@@ -115,7 +115,7 @@ if let svgImage = NSImage(contentsOf: iconSource) {
 
 // 6. Info.plist. The bundle id is locked (changing it resets TCC grants).
 // Keep in sync with HoneycrispInfo.version.
-let version = "0.1.7"
+let version = "0.1.8"
 let plist: [String: Any] = [
     "CFBundleIdentifier": "app.honeycrisp.Honeycrisp",
     "CFBundleName": "Honeycrisp",

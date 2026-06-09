@@ -51,6 +51,7 @@ public enum ActionCatalog {
         ActionDescriptor(app: .mail, id: "read", label: "Read a thread", kind: .read, defaultOn: true, requiresApproval: false),
         ActionDescriptor(app: .mail, id: "draft", label: "Draft a reply", kind: .write, defaultOn: true, requiresApproval: false),
         ActionDescriptor(app: .mail, id: "send", label: "Send mail", kind: .write, defaultOn: false, requiresApproval: true),
+        ActionDescriptor(app: .mail, id: "mark_read", label: "Mark as read", kind: .write, defaultOn: false, requiresApproval: false),
         ActionDescriptor(app: .reminders, id: "list", label: "List reminders", kind: .read, defaultOn: true, requiresApproval: false),
         ActionDescriptor(app: .reminders, id: "due", label: "Check what is due today", kind: .read, defaultOn: true, requiresApproval: false),
         ActionDescriptor(app: .reminders, id: "create", label: "Create a reminder", kind: .write, defaultOn: true, requiresApproval: false),

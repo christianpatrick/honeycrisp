@@ -26,7 +26,7 @@ Honeycrisp is a local MCP server for macOS that gives any MCP client fast, priva
 
 - Each app has a level: off, read, or write. Write implies read. Each action has a switch. Simple mode sets levels; Advanced mode sets switches.
 - Level changes reset switches deterministically (HC-016 semantics): off turns every action off, read turns read actions on and write actions off, and write turns every action on. Simple mode is the blunt instrument and Advanced is the curation surface; outbound sends always keep their per-request approval, so write never means silent sends.
-- The action catalog comes from the catalog spec plus messages mark read, sixteen actions total. After HC-002 the catalog in code is the single source of truth.
+- The action catalog comes from the catalog spec plus messages mark read and mail mark read, seventeen actions total. After HC-002 the catalog in code is the single source of truth.
 - requiresApproval actions are mail.send, messages.send, and messages.draft. These post a notification with Allow once and Don't allow every time they run, are denied on timeout, and land in the audit log as asked or denied. Everything else is auto when its switch is on and blocked when it is off.
 
 ## Process rules
