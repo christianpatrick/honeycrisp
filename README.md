@@ -63,7 +63,7 @@ brew install christianpatrick/tap/honeycrisp
 You will also be able to download a signed build from the [releases page](https://github.com/christianpatrick/honeycrisp/releases) and drop it in your Applications folder.
 
 > [!NOTE]
-> Honeycrisp requires macOS 15 or later. The Homebrew tap and the releases page are not live yet, so until the first release ships you can build from source with `swift build -c release` (see [CONTRIBUTING.md](CONTRIBUTING.md)).
+> Honeycrisp requires macOS 15 or later. The Homebrew tap and the releases page are not live yet, so until the first release ships you build from source: clone the repo, run `swift scripts/package-app.swift`, and drag `dist/Honeycrisp.app` into Applications. The `honeycrisp` command ships inside the app at `Contents/MacOS/honeycrisp-cli`, and the app's setup screen hands you a config snippet with that path filled in.
 
 ## Connect your assistant
 
@@ -88,6 +88,14 @@ Add Honeycrisp to your client config, then restart the app.
 ### Any other MCP client
 
 Every other client follows the same shape. Register a server, set the command to `honeycrisp`, and pass `serve` as the argument. If your client lists servers in a UI, add one pointing at the Honeycrisp binary.
+
+Clients that speak HTTP can skip the bridge and talk to the menu bar app directly:
+
+```sh
+claude mcp add --transport http honeycrisp http://127.0.0.1:41117/mcp
+```
+
+Either way, every request flows through the one app you granted access to, shows up in its activity list, and obeys the permissions you set in the panel.
 
 ## Configuration
 

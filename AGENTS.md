@@ -52,6 +52,8 @@ Honeycrisp is a local MCP server for macOS that gives any MCP client fast, priva
 
 ## Findings log
 
+- 2026-06-09 (HC-012): Live verification through the packaged app on this Mac: /health, initialize, gated tools/list, a denied mail_send writing the real audit entry, and the CLI auto-bridging stdio through the running app with exact client attribution all verified. Two behaviors to know: the prior build's config.json carried its port (8765) through tolerant decoding, which is intended, so the hub serves there until the user changes it in Settings; and an allowed call that touches an ungranted framework suspends inside the system permission prompt until the user answers, which is correct first-use behavior but means a smoke test against an ungranted app hangs rather than failing.
+
 - 2026-06-09: The development harness running this work can neither show TCC prompts (CNContactStore.requestAccess auto-denies with CNError 100 while the status stays notDetermined) nor read FDA-protected stores (chat.db and ~/Library/Mail are "authorization denied" even unsandboxed). Gated integration tests therefore run from a TCC-capable host: launch them from Terminal.app, which can present prompts and can be granted Full Disk Access in System Settings. The authoritative end-to-end verification is through the packaged Honeycrisp.app (HC-012), which is the product's real TCC identity and the grant-once story we ship.
 
 - 2026-06-09: Christian locked the language constraint: every bit of the project is native Swift, including developer tooling. No shell, Python, or Node scripts.
