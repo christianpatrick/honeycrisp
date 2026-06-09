@@ -53,3 +53,4 @@ Checkable statements that make this task done.
 | HC-015 | Bring the Settings window to the front | done |
 | HC-016 | Simple mode Read & write enables every action | done |
 | HC-017 | Equal glance tiles and a visible menu bar glyph | done |
+| HC-018 | Settings opens on the current Space | done |

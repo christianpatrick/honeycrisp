@@ -1,6 +1,27 @@
+import AppKit
 import HoneycrispCore
 import ServiceManagement
 import SwiftUI
+
+/// Grabs the hosting NSWindow once the view lands in one and applies
+/// configuration. Reapplication must be idempotent.
+struct WindowConfigurator: NSViewRepresentable {
+    let configure: (NSWindow) -> Void
+
+    func makeNSView(context: Context) -> NSView {
+        let view = NSView()
+        DispatchQueue.main.async { [weak view] in
+            if let window = view?.window { configure(window) }
+        }
+        return view
+    }
+
+    func updateNSView(_ nsView: NSView, context: Context) {
+        DispatchQueue.main.async { [weak nsView] in
+            if let window = nsView?.window { configure(window) }
+        }
+    }
+}
 
 /// Small, native settings: launch at login, the port, an optional bearer
 /// token, and the activity list's retention.
@@ -71,6 +92,13 @@ struct SettingsView: View {
         .frame(width: 420)
         .fixedSize(horizontal: false, vertical: true)
         .honeycrispChrome()
+        .background(
+            WindowConfigurator { window in
+                // Come to the user's current Space instead of switching
+                // macOS to the Space this window last lived on.
+                window.collectionBehavior.insert(.moveToActiveSpace)
+            }
+        )
         .onAppear {
             portText = String(model.config.port)
             tokenText = model.config.bearerToken ?? ""
