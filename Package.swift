@@ -6,6 +6,7 @@ let package = Package(
     platforms: [.macOS(.v15)],
     products: [
         .library(name: "HoneycrispCore", targets: ["HoneycrispCore"]),
+        .executable(name: "honeycrisp", targets: ["HoneycrispCLI"]),
     ],
     dependencies: [
         .package(url: "https://github.com/modelcontextprotocol/swift-sdk.git", from: "0.9.0"),
@@ -15,6 +16,7 @@ let package = Package(
             name: "HoneycrispCore",
             dependencies: [.product(name: "MCP", package: "swift-sdk")]
         ),
+        .executableTarget(name: "HoneycrispCLI", dependencies: ["HoneycrispCore"]),
         .testTarget(name: "HoneycrispCoreTests", dependencies: ["HoneycrispCore"]),
     ]
 )

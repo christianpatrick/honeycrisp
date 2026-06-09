@@ -40,14 +40,18 @@ public struct ToolGateway: Sendable {
             .map(\.tool)
     }
 
-    public func callTool(name: String, arguments: [String: Value]) async -> GatewayResult {
+    /// client overrides the construction-time closure for transports that
+    /// know the caller per request (the HTTP router's header attribution).
+    public func callTool(name: String, arguments: [String: Value], client: String? = nil) async
+        -> GatewayResult
+    {
         guard let registered = ToolRegistry.registered(named: name) else {
             // Junk names are not worth an audit entry; denials are.
             return GatewayResult(content: "There is no tool named \(name).", isError: true)
         }
         let descriptor = registered.descriptor
         let config = configProvider()
-        let client = clientName()
+        let client = client ?? clientName()
         let appName = Self.appName(for: descriptor.app)
 
         switch config.decision(app: descriptor.app, action: descriptor.id) {

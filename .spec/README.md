@@ -45,6 +45,6 @@ Checkable statements that make this task done.
 | HC-007 | Reminders service | done |
 | HC-008 | Messages service | done |
 | HC-009 | Mail service | done |
-| HC-010 | Loopback HTTP transport, CLI bridge, client tracking | planned |
+| HC-010 | Loopback HTTP transport, CLI bridge, client tracking | done |
 | HC-011 | Menu bar app | planned |
 | HC-012 | Final verification, docs, v0.1.0 | planned |
