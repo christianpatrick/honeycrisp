@@ -155,9 +155,23 @@ enum MimeText {
 
     private static func stripTags(_ html: String) -> String {
         var text = html
-        for tag in ["<br>", "<br/>", "<br />", "</p>", "</div>"] {
+
+        // Style, script, and head contents are not prose; drop the whole
+        // blocks before de-tagging or a newsletter's body leads with CSS.
+        for element in ["style", "script", "head"] {
+            while let start = text.range(of: "<\(element)", options: .caseInsensitive),
+                let end = text.range(
+                    of: "</\(element)>", options: .caseInsensitive,
+                    range: start.upperBound..<text.endIndex)
+            {
+                text.removeSubrange(start.lowerBound..<end.upperBound)
+            }
+        }
+
+        for tag in ["<br>", "<br/>", "<br />", "</p>", "</div>", "</tr>", "</li>", "</h1>", "</h2>", "</h3>"] {
             text = text.replacingOccurrences(of: tag, with: "\n", options: .caseInsensitive)
         }
+
         var result = ""
         var insideTag = false
         for character in text {
@@ -167,6 +181,20 @@ enum MimeText {
                 result.append(character)
             }
         }
-        return result.trimmingCharacters(in: .whitespacesAndNewlines)
+
+        for (entity, value) in [
+            ("&nbsp;", " "), ("&amp;", "&"), ("&lt;", "<"), ("&gt;", ">"),
+            ("&quot;", "\""), ("&#39;", "'"), ("&copy;", "(c)"),
+        ] {
+            result = result.replacingOccurrences(of: entity, with: value)
+        }
+
+        // One trimmed line per content run; layout tables leave oceans of
+        // blank space otherwise.
+        return result
+            .split(separator: "\n", omittingEmptySubsequences: true)
+            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+            .filter { !$0.isEmpty }
+            .joined(separator: "\n")
     }
 }

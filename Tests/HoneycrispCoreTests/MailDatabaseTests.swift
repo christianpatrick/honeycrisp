@@ -3,9 +3,21 @@ import SQLite3
 import Testing
 import HoneycrispCore
 
+/// Which recipients-table shape a fixture should mimic. Real Mail versions
+/// disagree: older indexes use message_id and address_id, the current one
+/// uses message and address, and degradation must survive the table being
+/// unrecognizable entirely.
+private enum RecipientsShape {
+    case legacy
+    case modern
+    case absent
+}
+
 /// Builds a fixture Envelope Index and .emlx tree so MailDatabase's SQL and
 /// body loading run for real without any TCC grant.
-private func makeMailFixture() throws -> (index: String, root: URL) {
+private func makeMailFixture(recipients: RecipientsShape = .legacy) throws -> (
+    index: String, root: URL
+) {
     let root = FileManager.default.temporaryDirectory
         .appendingPathComponent("honeycrisp-tests-\(UUID().uuidString)", isDirectory: true)
     let mailData = root.appendingPathComponent("V10/MailData", isDirectory: true)
@@ -18,12 +30,34 @@ private func makeMailFixture() throws -> (index: String, root: URL) {
     }
     defer { sqlite3_close(db) }
 
+    let recipientsSQL: String
+    switch recipients {
+    case .legacy:
+        recipientsSQL = """
+            CREATE TABLE recipients (ROWID INTEGER PRIMARY KEY, message_id INTEGER, address_id INTEGER, type INTEGER, position INTEGER);
+            INSERT INTO recipients VALUES (1, 101, 2, 0, 0);
+            INSERT INTO recipients VALUES (2, 102, 1, 0, 0);
+            INSERT INTO recipients VALUES (3, 102, 3, 1, 1);
+            INSERT INTO recipients VALUES (4, 103, 2, 0, 0);
+            """
+    case .modern:
+        recipientsSQL = """
+            CREATE TABLE recipients (ROWID INTEGER PRIMARY KEY, message INTEGER, address INTEGER, type INTEGER, position INTEGER);
+            INSERT INTO recipients VALUES (1, 101, 2, 0, 0);
+            INSERT INTO recipients VALUES (2, 102, 1, 0, 0);
+            INSERT INTO recipients VALUES (3, 102, 3, 1, 1);
+            INSERT INTO recipients VALUES (4, 103, 2, 0, 0);
+            """
+    case .absent:
+        recipientsSQL = ""
+    }
+
     let statements = """
         CREATE TABLE subjects (ROWID INTEGER PRIMARY KEY, subject TEXT);
         CREATE TABLE addresses (ROWID INTEGER PRIMARY KEY, address TEXT, comment TEXT);
         CREATE TABLE mailboxes (ROWID INTEGER PRIMARY KEY, url TEXT);
         CREATE TABLE messages (ROWID INTEGER PRIMARY KEY, subject INTEGER, sender INTEGER, date_received INTEGER, mailbox INTEGER, conversation_id INTEGER, read INTEGER);
-        CREATE TABLE recipients (ROWID INTEGER PRIMARY KEY, message_id INTEGER, address_id INTEGER, type INTEGER, position INTEGER);
+        \(recipientsSQL)
 
         INSERT INTO subjects VALUES (1, 'Re: Q3 planning');
         INSERT INTO subjects VALUES (2, 'Lunch');
@@ -36,11 +70,6 @@ private func makeMailFixture() throws -> (index: String, root: URL) {
         INSERT INTO messages VALUES (101, 1, 1, 1750000000, 1, 9001, 1);
         INSERT INTO messages VALUES (102, 1, 2, 1750000600, 2, 9001, 1);
         INSERT INTO messages VALUES (103, 2, 3, 1750001200, 1, 9002, 0);
-
-        INSERT INTO recipients VALUES (1, 101, 2, 0, 0);
-        INSERT INTO recipients VALUES (2, 102, 1, 0, 0);
-        INSERT INTO recipients VALUES (3, 102, 3, 1, 1);
-        INSERT INTO recipients VALUES (4, 103, 2, 0, 0);
         """
     guard sqlite3_exec(db, statements, nil, nil, nil) == SQLITE_OK else {
         throw ToolFailure("fixture SQL failed: \(String(cString: sqlite3_errmsg(db)))")
@@ -74,6 +103,27 @@ private func makeMailFixture() throws -> (index: String, root: URL) {
         "V10/AccountUUID/INBOX.mbox/BoxUUID/Data/1/Messages", isDirectory: true)
     try FileManager.default.createDirectory(at: messagesDir, withIntermediateDirectories: true)
     try emlx.write(to: messagesDir.appendingPathComponent("101.emlx"))
+
+    // Message 103 is HTML-only, like a real newsletter: style soup wrapping
+    // a little prose.
+    let htmlOnly = """
+        From: maya@studio.com\r
+        To: me@me.com\r
+        Subject: Lunch\r
+        Content-Type: text/html; charset=utf-8\r
+        \r
+        <html><head><meta charset="utf-8"></head><body>\r
+        <style>.footer { font-size: 12px; } td { font-family: helvetica !important; }</style>\r
+        <table><tr><td>   </td></tr><tr><td><p>Lunch Friday?</p></td></tr></table>\r
+        <div>RSVP&nbsp;by <b>Thursday</b>.</div>\r
+        <script>var tracking = "no thanks";</script>\r
+        </body></html>\r
+        """
+    let htmlPayload = Data(htmlOnly.utf8)
+    var htmlEmlx = Data("\(htmlPayload.count)\n".utf8)
+    htmlEmlx.append(htmlPayload)
+    htmlEmlx.append(Data("\n<?xml version=\"1.0\"?><plist/>".utf8))
+    try htmlEmlx.write(to: messagesDir.appendingPathComponent("103.emlx"))
 
     return (index, root)
 }
@@ -120,6 +170,38 @@ struct MailDatabaseTests {
         #expect(
             Set(thread.participants)
                 == ["alex@studio.com", "me@me.com", "maya@studio.com"])
+    }
+
+    @Test("the modern recipients schema (message, address) resolves too")
+    func modernRecipientsSchema() async throws {
+        let fixture = try makeMailFixture(recipients: .modern)
+        let database = MailDatabase(indexPath: fixture.index, mailRoot: fixture.root)
+        let thread = try await database.thread(id: "9001", limit: 10)
+        #expect(thread.messages.first?.to == ["me@me.com"])
+        #expect(thread.messages.first?.body == "Planning looks good. See you Thursday!")
+        #expect(
+            Set(thread.participants)
+                == ["alex@studio.com", "me@me.com", "maya@studio.com"])
+    }
+
+    @Test("a missing recipients table degrades to empty to lists, not a failure")
+    func absentRecipientsTable() async throws {
+        let fixture = try makeMailFixture(recipients: .absent)
+        let database = MailDatabase(indexPath: fixture.index, mailRoot: fixture.root)
+        let thread = try await database.thread(id: "9001", limit: 10)
+        #expect(thread.messages.count == 2)
+        #expect(thread.messages.first?.to == [])
+        #expect(thread.messages.first?.body == "Planning looks good. See you Thursday!")
+        #expect(Set(thread.participants) == ["alex@studio.com", "me@me.com"])
+    }
+
+    @Test("HTML-only mail reads as prose: no CSS, no scripts, no whitespace soup")
+    func htmlOnlyBody() async throws {
+        let fixture = try makeMailFixture()
+        let database = MailDatabase(indexPath: fixture.index, mailRoot: fixture.root)
+        let thread = try await database.thread(id: "9002", limit: 5)
+        let body = try #require(thread.messages.first?.body)
+        #expect(body == "Lunch Friday?\nRSVP by Thursday.")
     }
 
     @Test("messageSummary resolves one message for reply targeting")

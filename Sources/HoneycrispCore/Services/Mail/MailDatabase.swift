@@ -10,9 +10,21 @@ public actor MailDatabase: EnvelopeIndexReading {
         deinit { sqlite3_close_v2(db) }
     }
 
+    /// How this Mail version names the recipients reference columns. Real
+    /// indexes disagree (message_id/address_id on older versions, message/
+    /// address on current ones), so we ask SQLite instead of assuming.
+    private struct RecipientsSchema {
+        let messageColumn: String
+        let addressColumn: String
+        let hasType: Bool
+        let hasPosition: Bool
+    }
+
     private let indexPath: String
     private let mailRoot: URL
     private var connection: Connection?
+    /// nil means not probed yet; .some(nil) means unusable, degrade.
+    private var recipientsSchema: RecipientsSchema??
 
     public init(
         indexPath: String = MailDatabase.discoverIndexPath(),
@@ -173,23 +185,55 @@ public actor MailDatabase: EnvelopeIndexReading {
         )
     }
 
+    /// Recipients are a nicety; bodies are the point of mail_read. An
+    /// unrecognizable recipients table degrades to empty lists instead of
+    /// failing the thread.
     private func recipients(_ db: OpaquePointer, messageRowID: Int64, type: Int32) throws
         -> [String]
     {
+        guard let schema = probeRecipientsSchema(db) else { return [] }
         var addresses: [String] = []
-        let sql = """
+        var sql = """
             SELECT a.address FROM recipients r
-            JOIN addresses a ON a.ROWID = r.address_id
-            WHERE r.message_id = ?1 AND r.type = ?2
-            ORDER BY r.position ASC
+            JOIN addresses a ON a.ROWID = r.\(schema.addressColumn)
+            WHERE r.\(schema.messageColumn) = ?1
             """
+        if schema.hasType {
+            sql += " AND r.type = ?2"
+        }
+        sql += schema.hasPosition ? " ORDER BY r.position ASC" : " ORDER BY r.ROWID ASC"
         try query(db, sql, bind: { statement in
             sqlite3_bind_int64(statement, 1, messageRowID)
-            sqlite3_bind_int(statement, 2, type)
+            if schema.hasType {
+                sqlite3_bind_int(statement, 2, type)
+            }
         }) { statement in
             if let address = column(statement, 0) { addresses.append(address) }
         }
         return addresses
+    }
+
+    private func probeRecipientsSchema(_ db: OpaquePointer) -> RecipientsSchema? {
+        if let probed = recipientsSchema { return probed }
+        var columns: Set<String> = []
+        try? query(db, "PRAGMA table_info(recipients)", bind: { _ in }) { statement in
+            if let name = column(statement, 1) { columns.insert(name.lowercased()) }
+        }
+        let messageColumn = ["message_id", "message"].first { columns.contains($0) }
+        let addressColumn = ["address_id", "address"].first { columns.contains($0) }
+        let schema: RecipientsSchema?
+        if let messageColumn, let addressColumn {
+            schema = RecipientsSchema(
+                messageColumn: messageColumn,
+                addressColumn: addressColumn,
+                hasType: columns.contains("type"),
+                hasPosition: columns.contains("position")
+            )
+        } else {
+            schema = nil
+        }
+        recipientsSchema = .some(schema)
+        return schema
     }
 
     /// One bounded walk for all the bodies a thread needs. The on-disk
