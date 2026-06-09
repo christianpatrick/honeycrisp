@@ -17,6 +17,7 @@ let package = Package(
             dependencies: [.product(name: "MCP", package: "swift-sdk")]
         ),
         .executableTarget(name: "HoneycrispCLI", dependencies: ["HoneycrispCore"]),
+        .executableTarget(name: "HoneycrispMenuBar", dependencies: ["HoneycrispCore"]),
         .testTarget(name: "HoneycrispCoreTests", dependencies: ["HoneycrispCore"]),
     ]
 )
