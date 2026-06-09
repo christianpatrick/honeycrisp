@@ -285,3 +285,16 @@ func stringArray(_ value: Value?) -> [String] {
         return nil
     }
 }
+
+func int(_ value: Value?) -> Int? {
+    switch value {
+    case .int(let result)?: return result
+    case .double(let result)?: return Int(result)
+    default: return nil
+    }
+}
+
+func bool(_ value: Value?) -> Bool? {
+    if case .bool(let result)? = value { return result }
+    return nil
+}

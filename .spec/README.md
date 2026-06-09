@@ -41,7 +41,7 @@ Checkable statements that make this task done.
 | HC-003 | Audit log store | done |
 | HC-004 | MCP server core with tool catalog and gating | done |
 | HC-005 | Approval broker | done |
-| HC-006 | Contacts service | planned |
+| HC-006 | Contacts service | done |
 | HC-007 | Reminders service | planned |
 | HC-008 | Messages service | planned |
 | HC-009 | Mail service | planned |
