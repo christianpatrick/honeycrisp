@@ -8,15 +8,18 @@ public struct ServiceExecutor: ToolExecutor {
     private let configProvider: @Sendable () -> HoneycrispConfig
     private let contacts: ContactsTools?
     private let reminders: RemindersTools?
+    private let messages: MessagesTools?
 
     public init(
         configProvider: @escaping @Sendable () -> HoneycrispConfig,
         contacts: (any ContactsServicing)? = nil,
-        reminders: (any RemindersServicing)? = nil
+        reminders: (any RemindersServicing)? = nil,
+        messages: (any MessagesServicing)? = nil
     ) {
         self.configProvider = configProvider
         self.contacts = contacts.map(ContactsTools.init)
         self.reminders = reminders.map(RemindersTools.init)
+        self.messages = messages.map(MessagesTools.init)
     }
 
     public func execute(app: AppID, action: String, arguments: [String: Value]) async throws
@@ -36,7 +39,11 @@ public struct ServiceExecutor: ToolExecutor {
             }
             return try await reminders.execute(action: action, arguments: arguments, config: config)
         case .messages:
-            throw ToolFailure("Messages is not wired up in this build.")
+            guard let messages else {
+                throw ToolFailure("Messages is not wired up in this build.")
+            }
+            return try await messages.execute(
+                action: action, arguments: arguments, defaultLimit: config.defaultLimit)
         case .mail:
             throw ToolFailure("Mail is not wired up in this build.")
         }

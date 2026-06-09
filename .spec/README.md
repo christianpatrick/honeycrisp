@@ -43,7 +43,7 @@ Checkable statements that make this task done.
 | HC-005 | Approval broker | done |
 | HC-006 | Contacts service | done |
 | HC-007 | Reminders service | done |
-| HC-008 | Messages service | planned |
+| HC-008 | Messages service | done |
 | HC-009 | Mail service | planned |
 | HC-010 | Loopback HTTP transport, CLI bridge, client tracking | planned |
 | HC-011 | Menu bar app | planned |
