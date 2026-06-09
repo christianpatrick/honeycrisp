@@ -5,6 +5,7 @@ import SwiftUI
 /// Layout and copy mirror the panel spec in the System direction.
 struct PanelView: View {
     @Environment(AppModel.self) private var model
+    @Environment(\.openSettings) private var openSettings
     @State private var tab: Tab = .status
 
     enum Tab: String, CaseIterable, Identifiable {
@@ -113,7 +114,20 @@ struct PanelView: View {
 
     private var footer: some View {
         HStack {
-            SettingsLink {
+            Button {
+                // Accessory apps are not activated just because a window
+                // appeared, so without this Settings opens behind every
+                // other app.
+                NSApplication.shared.activate()
+                openSettings()
+                Task { @MainActor in
+                    try? await Task.sleep(for: .milliseconds(80))
+                    NSApplication.shared.activate()
+                    NSApplication.shared.windows
+                        .first { $0.identifier?.rawValue.contains("Settings") == true }?
+                        .makeKeyAndOrderFront(nil)
+                }
+            } label: {
                 HStack(spacing: 5) {
                     Image(systemName: "gearshape")
                     Text("Settings")
