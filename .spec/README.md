@@ -42,7 +42,7 @@ Checkable statements that make this task done.
 | HC-004 | MCP server core with tool catalog and gating | done |
 | HC-005 | Approval broker | done |
 | HC-006 | Contacts service | done |
-| HC-007 | Reminders service | planned |
+| HC-007 | Reminders service | done |
 | HC-008 | Messages service | planned |
 | HC-009 | Mail service | planned |
 | HC-010 | Loopback HTTP transport, CLI bridge, client tracking | planned |

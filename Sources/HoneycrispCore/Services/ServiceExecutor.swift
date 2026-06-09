@@ -7,28 +7,34 @@ import MCP
 public struct ServiceExecutor: ToolExecutor {
     private let configProvider: @Sendable () -> HoneycrispConfig
     private let contacts: ContactsTools?
+    private let reminders: RemindersTools?
 
     public init(
         configProvider: @escaping @Sendable () -> HoneycrispConfig,
-        contacts: (any ContactsServicing)? = nil
+        contacts: (any ContactsServicing)? = nil,
+        reminders: (any RemindersServicing)? = nil
     ) {
         self.configProvider = configProvider
         self.contacts = contacts.map(ContactsTools.init)
+        self.reminders = reminders.map(RemindersTools.init)
     }
 
     public func execute(app: AppID, action: String, arguments: [String: Value]) async throws
         -> ToolOutcome
     {
-        let defaultLimit = configProvider().defaultLimit
+        let config = configProvider()
         switch app {
         case .contacts:
             guard let contacts else {
                 throw ToolFailure("Contacts is not wired up in this build.")
             }
             return try await contacts.execute(
-                action: action, arguments: arguments, defaultLimit: defaultLimit)
+                action: action, arguments: arguments, defaultLimit: config.defaultLimit)
         case .reminders:
-            throw ToolFailure("Reminders is not wired up in this build.")
+            guard let reminders else {
+                throw ToolFailure("Reminders is not wired up in this build.")
+            }
+            return try await reminders.execute(action: action, arguments: arguments, config: config)
         case .messages:
             throw ToolFailure("Messages is not wired up in this build.")
         case .mail:
