@@ -101,18 +101,6 @@ struct StatusTab: View {
                 }
             }
 
-            HStack(alignment: .top, spacing: 8) {
-                Image(systemName: "lock")
-                    .font(.system(size: 12))
-                    .foregroundStyle(Theme.greenText)
-                Text("Everything runs on your Mac. Nothing is uploaded, ever.")
-                    .font(.system(size: 12))
-                    .foregroundStyle(.secondary)
-                Spacer(minLength: 0)
-            }
-            .padding(11)
-            .background(Color.secondary.opacity(0.07))
-            .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
         }
     }
 }
@@ -174,13 +162,10 @@ struct PermissionsTab: View {
                     .font(.system(size: 11.5))
                     .foregroundStyle(.secondary)
                 Spacer()
-                Picker("", selection: $mode) {
-                    ForEach(Mode.allCases) { mode in
-                        Text(mode.rawValue).tag(mode)
-                    }
-                }
-                .pickerStyle(.segmented)
-                .labelsHidden()
+                ThemedSegments(
+                    options: Mode.allCases.map { ($0, $0.rawValue) },
+                    selection: $mode
+                )
                 .fixedSize()
             }
 
@@ -320,7 +305,6 @@ struct AdvancedAppCard: View {
                         .labelsHidden()
                         .toggleStyle(.switch)
                         .controlSize(.small)
-                        .tint(Theme.red)
                     }
                     .padding(.horizontal, 12)
                     .padding(.vertical, 7)

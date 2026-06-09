@@ -29,6 +29,7 @@ struct OnboardingView: View {
                 .padding(.top, 13)
         }
         .frame(width: 480, height: 470)
+        .honeycrispChrome()
     }
 
     private var footer: some View {
@@ -74,7 +75,6 @@ struct OnboardingView: View {
     private func primaryButton(_ label: String, action: @escaping () -> Void) -> some View {
         Button(label, action: action)
             .buttonStyle(.borderedProminent)
-            .tint(Theme.red)
             .controlSize(.large)
     }
 }
@@ -109,17 +109,6 @@ private struct WelcomeStep: View {
             .multilineTextAlignment(.center)
             .frame(maxWidth: 360)
             .padding(.top, 9)
-            HStack(spacing: 8) {
-                Image(systemName: "lock")
-                    .font(.system(size: 11))
-                Text("Everything runs on your Mac. Nothing is uploaded, ever.")
-                    .font(.system(size: 12.5, weight: .medium))
-            }
-            .foregroundStyle(Theme.greenText)
-            .padding(.vertical, 7)
-            .padding(.horizontal, 14)
-            .background(Capsule().fill(Theme.green.opacity(0.12)))
-            .padding(.top, 18)
         }
         .frame(maxWidth: .infinity)
     }
@@ -293,13 +282,10 @@ private struct ConnectStep: View {
             .padding(.top, 6)
             .padding(.bottom, 14)
 
-            Picker("", selection: $client) {
-                ForEach(Client.allCases) { client in
-                    Text(client.rawValue).tag(client)
-                }
-            }
-            .pickerStyle(.segmented)
-            .labelsHidden()
+            ThemedSegments(
+                options: Client.allCases.map { ($0, $0.rawValue) },
+                selection: $client
+            )
             .padding(.bottom, 12)
 
             Text(fileLabel)

@@ -21,13 +21,10 @@ struct PanelView: View {
                 .padding(.top, 13)
                 .padding(.bottom, 11)
 
-            Picker("", selection: $tab) {
-                ForEach(Tab.allCases) { tab in
-                    Text(tab.rawValue).tag(tab)
-                }
-            }
-            .pickerStyle(.segmented)
-            .labelsHidden()
+            ThemedSegments(
+                options: Tab.allCases.map { ($0, $0.rawValue) },
+                selection: $tab
+            )
             .padding(.horizontal, 14)
             .padding(.bottom, 10)
 
@@ -60,6 +57,7 @@ struct PanelView: View {
                 .padding(.vertical, 9)
         }
         .frame(width: 360)
+        .honeycrispChrome()
         .task {
             await model.refresh()
         }
@@ -215,7 +213,6 @@ struct PendingApprovalsView: View {
                                 Task { await model.resolveApproval(id: approval.id, approved: true) }
                             }
                             .buttonStyle(.borderedProminent)
-                            .tint(Theme.red)
                             .controlSize(.small)
                         }
                     }

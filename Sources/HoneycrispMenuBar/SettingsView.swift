@@ -65,17 +65,12 @@ struct SettingsView: View {
                     NSWorkspace.shared.open(HoneycrispConfig.supportDirectoryURL)
                 }
                 LabeledContent("Version", value: HoneycrispInfo.version)
-            } footer: {
-                Text(
-                    "Everything Honeycrisp knows lives in this folder, on this Mac. Nothing is uploaded, ever."
-                )
-                .font(.footnote)
-                .foregroundStyle(.secondary)
             }
         }
         .formStyle(.grouped)
         .frame(width: 420)
         .fixedSize(horizontal: false, vertical: true)
+        .honeycrispChrome()
         .onAppear {
             portText = String(model.config.port)
             tokenText = model.config.bearerToken ?? ""
