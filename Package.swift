@@ -9,5 +9,6 @@ let package = Package(
     ],
     targets: [
         .target(name: "HoneycrispCore"),
+        .testTarget(name: "HoneycrispCoreTests", dependencies: ["HoneycrispCore"]),
     ]
 )

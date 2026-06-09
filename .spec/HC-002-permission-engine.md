@@ -1,7 +1,7 @@
 # HC-002: Permission engine and config model
 
 - Task number: HC-002 (no GitHub issue yet)
-- Status: accepted
+- Status: done
 - Date: 2026-06-09
 
 ## Why
@@ -93,7 +93,7 @@ ActionCatalogTests:
 - Spot checks against the catalog spec: labels, kinds, and defaults for mail.send, messages.mark_read, reminders.complete.
 
 PermissionEngineTests:
-- Default config: mail.search allowed, mail.send denied(actionOff), messages.recent allowed, messages.draft denied(actionOff), reminders.create allowed, contacts.create denied(actionOff).
+- Default config: mail.search allowed, mail.send denied(actionOff), messages.recent allowed, messages.draft denied(readOnlyApp), reminders.create allowed, contacts.create denied(readOnlyApp). The last two looked like actionOff at first, but the evaluation order is normative: levels gate before switches, so a write action under a read level reports readOnlyApp, which is also the truthful message for a Simple mode user. mail.send reports actionOff because mail's default level is write.
 - Enabling mail.send yields needsApproval, never allowed.
 - setLevel(.off, mail) denies mail.search with appOff.
 - setLevel(.read, mail) forces write switches off while search stays on.
