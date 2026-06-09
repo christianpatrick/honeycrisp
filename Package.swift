@@ -7,8 +7,14 @@ let package = Package(
     products: [
         .library(name: "HoneycrispCore", targets: ["HoneycrispCore"]),
     ],
+    dependencies: [
+        .package(url: "https://github.com/modelcontextprotocol/swift-sdk.git", from: "0.9.0"),
+    ],
     targets: [
-        .target(name: "HoneycrispCore"),
+        .target(
+            name: "HoneycrispCore",
+            dependencies: [.product(name: "MCP", package: "swift-sdk")]
+        ),
         .testTarget(name: "HoneycrispCoreTests", dependencies: ["HoneycrispCore"]),
     ]
 )

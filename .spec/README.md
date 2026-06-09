@@ -39,7 +39,7 @@ Checkable statements that make this task done.
 | HC-001 | Repo scaffold | done |
 | HC-002 | Permission engine and config model | done |
 | HC-003 | Audit log store | done |
-| HC-004 | MCP server core with tool catalog and gating | planned |
+| HC-004 | MCP server core with tool catalog and gating | done |
 | HC-005 | Approval broker | planned |
 | HC-006 | Contacts service | planned |
 | HC-007 | Reminders service | planned |
