@@ -116,7 +116,9 @@ enum BundledArt {
     static func menuBarGlyph() -> NSImage? {
         guard let image = image(named: "glyph-black.svg") else { return nil }
         image.isTemplate = true
-        image.size = NSSize(width: 16, height: 16)
+        // The star fills only ~64 percent of the SVG canvas, so 22 points
+        // here lands a ~14 point visible glyph, normal menu bar presence.
+        image.size = NSSize(width: 22, height: 22)
         return image
     }
 

@@ -10,7 +10,7 @@ struct StatusTab: View {
 
     var body: some View {
         VStack(spacing: 12) {
-            HStack(spacing: 8) {
+            HStack(alignment: .top, spacing: 8) {
                 GlanceTile(
                     value: "\(model.counts.requestsToday)",
                     label: "Requests today",
@@ -24,6 +24,8 @@ struct StatusTab: View {
                     tone: .gold,
                     action: goActivity)
             }
+            // The row takes the tallest tile's height and both tiles fill it.
+            .fixedSize(horizontal: false, vertical: true)
 
             VStack(alignment: .leading, spacing: 7) {
                 SectionLabel(text: "Connected clients")
@@ -115,9 +117,10 @@ struct GlanceTile: View {
 
     var body: some View {
         Button(action: action) {
-            VStack(alignment: .leading, spacing: 4) {
+            VStack(alignment: .leading, spacing: 3) {
                 Text(value)
-                    .font(.system(size: 26, weight: .bold))
+                    .font(.system(size: 27, weight: .bold, design: .rounded))
+                    .monospacedDigit()
                     .foregroundStyle(tone == .gold ? Theme.gold : .primary)
                 Text(label)
                     .font(.system(size: 12, weight: .medium))
@@ -127,10 +130,11 @@ struct GlanceTile: View {
                         .font(.system(size: 10.5))
                         .foregroundStyle(.tertiary)
                 }
+                Spacer(minLength: 0)
             }
-            .frame(maxWidth: .infinity, alignment: .leading)
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
             .padding(.horizontal, 12)
-            .padding(.vertical, 10)
+            .padding(.vertical, 11)
             .background(.background.opacity(0.6))
             .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
             .overlay(
