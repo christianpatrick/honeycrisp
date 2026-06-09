@@ -285,22 +285,6 @@ public actor ChatDatabase: ChatDatabaseReading {
     }
 }
 
-private func column(_ statement: OpaquePointer, _ index: Int32) -> String? {
-    guard let text = sqlite3_column_text(statement, index) else { return nil }
-    return String(cString: text)
-}
-
-private func blobColumn(_ statement: OpaquePointer, _ index: Int32) -> Data? {
-    guard let bytes = sqlite3_column_blob(statement, index) else { return nil }
-    let count = Int(sqlite3_column_bytes(statement, index))
-    return Data(bytes: bytes, count: count)
-}
-
-private func bindText(_ statement: OpaquePointer, _ index: Int32, _ value: String) {
-    let transient = unsafeBitCast(-1, to: sqlite3_destructor_type.self)
-    sqlite3_bind_text(statement, index, value, -1, transient)
-}
-
 /// Pulls the plain text out of an attributedBody typedstream blob. The
 /// layout this matches (0x84 0x01 0x2B, then a 1, 2, or 4 byte length,
 /// then UTF-8) is the one the Messages archiver writes; HC-012 verifies it

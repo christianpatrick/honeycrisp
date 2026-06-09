@@ -9,17 +9,33 @@ public struct ServiceExecutor: ToolExecutor {
     private let contacts: ContactsTools?
     private let reminders: RemindersTools?
     private let messages: MessagesTools?
+    private let mail: MailTools?
 
     public init(
         configProvider: @escaping @Sendable () -> HoneycrispConfig,
         contacts: (any ContactsServicing)? = nil,
         reminders: (any RemindersServicing)? = nil,
-        messages: (any MessagesServicing)? = nil
+        messages: (any MessagesServicing)? = nil,
+        mail: (any MailServicing)? = nil
     ) {
         self.configProvider = configProvider
         self.contacts = contacts.map(ContactsTools.init)
         self.reminders = reminders.map(RemindersTools.init)
         self.messages = messages.map(MessagesTools.init)
+        self.mail = mail.map(MailTools.init)
+    }
+
+    /// The full production wiring with every real service.
+    public static func production(configProvider: @escaping @Sendable () -> HoneycrispConfig)
+        -> ServiceExecutor
+    {
+        ServiceExecutor(
+            configProvider: configProvider,
+            contacts: CNContactsService(),
+            reminders: EKRemindersService(),
+            messages: MessagesService(),
+            mail: MailService()
+        )
     }
 
     public func execute(app: AppID, action: String, arguments: [String: Value]) async throws
@@ -45,7 +61,11 @@ public struct ServiceExecutor: ToolExecutor {
             return try await messages.execute(
                 action: action, arguments: arguments, defaultLimit: config.defaultLimit)
         case .mail:
-            throw ToolFailure("Mail is not wired up in this build.")
+            guard let mail else {
+                throw ToolFailure("Mail is not wired up in this build.")
+            }
+            return try await mail.execute(
+                action: action, arguments: arguments, defaultLimit: config.defaultLimit)
         }
     }
 }
