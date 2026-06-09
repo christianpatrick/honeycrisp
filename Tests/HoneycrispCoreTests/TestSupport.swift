@@ -19,6 +19,10 @@ actor CapturingExecutor: ToolExecutor {
         auditRows: []
     )
 
+    func setOutcome(_ outcome: ToolOutcome) {
+        self.outcome = outcome
+    }
+
     func execute(app: AppID, action: String, arguments: [String: Value]) async throws -> ToolOutcome {
         calls.append(Call(app: app, action: action, arguments: arguments))
         return outcome

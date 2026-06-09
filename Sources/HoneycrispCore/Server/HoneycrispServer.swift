@@ -25,11 +25,10 @@ public enum HoneycrispServer {
         await server.withMethodHandler(CallTool.self) { params in
             let result = await gateway.callTool(
                 name: params.name, arguments: params.arguments ?? [:])
-            let structured = try? JSONDecoder().decode(
-                Value.self, from: Data(result.content.utf8))
             return CallTool.Result(
                 content: [.text(result.content)],
-                structuredContent: result.isError ? nil : structured,
+                structuredContent: result.isError
+                    ? nil : MCPHTTPRouter.objectValue(result.content),
                 isError: result.isError
             )
         }

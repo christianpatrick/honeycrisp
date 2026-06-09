@@ -47,8 +47,12 @@ struct PanelView: View {
                 }
                 .padding(.horizontal, 14)
                 .padding(.bottom, 8)
+                .frame(maxWidth: .infinity)
             }
-            .frame(maxHeight: 470)
+            // Explicit, not maxHeight: a ScrollView inside a MenuBarExtra
+            // window collapses to zero ideal height under the window's
+            // unconstrained proposal, taking the whole panel body with it.
+            .frame(height: 470)
 
             Divider()
             footer

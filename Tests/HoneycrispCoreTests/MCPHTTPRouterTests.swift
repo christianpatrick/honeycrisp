@@ -159,6 +159,37 @@ struct MCPHTTPRouterTests {
         #expect(garbageDecoded.error?.code == -32700)
     }
 
+    @Test("array results omit structuredContent so strict clients accept them")
+    func arrayResultsOmitStructuredContent() async throws {
+        let executor = CapturingExecutor()
+        await executor.setOutcome(
+            ToolOutcome(
+                content: #"[{"title":"Call the dentist"}]"#,
+                auditAction: "Checked what is due today",
+                auditSummary: "Read 1 reminder. Nothing was modified."
+            ))
+        let (router, _) = makeRouter(
+            executor: executor, audit: AuditStore(fileURL: tempStoreURL("audit.jsonl")))
+        let response = await router.handle(
+            body: callBody(tool: "reminders_due"), clientHeader: nil)
+        let raw = try JSONSerialization.jsonObject(with: response.body) as? [String: Any]
+        let result = try #require(raw?["result"] as? [String: Any])
+        #expect(result["structuredContent"] == nil)
+        #expect(result["content"] != nil)
+        let text = String(decoding: response.body, as: UTF8.self)
+        #expect(text.contains("Call the dentist"))
+    }
+
+    @Test("object results keep structuredContent")
+    func objectResultsKeepStructuredContent() async throws {
+        let (router, _) = makeRouter(audit: AuditStore(fileURL: tempStoreURL("audit.jsonl")))
+        let response = await router.handle(
+            body: callBody(tool: "mail_search", arguments: ["query": "x"]), clientHeader: nil)
+        let raw = try JSONSerialization.jsonObject(with: response.body) as? [String: Any]
+        let result = try #require(raw?["result"] as? [String: Any])
+        #expect(result["structuredContent"] as? [String: Any] != nil)
+    }
+
     @Test("a tool the gateway refuses comes back as an isError result, not a protocol error")
     func gatewayRefusal() async throws {
         let (router, _) = makeRouter(audit: AuditStore(fileURL: tempStoreURL("audit.jsonl")))

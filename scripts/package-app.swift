@@ -114,7 +114,8 @@ if let svgImage = NSImage(contentsOf: iconSource) {
 }
 
 // 6. Info.plist. The bundle id is locked (changing it resets TCC grants).
-let version = "0.1.0"
+// Keep in sync with HoneycrispInfo.version.
+let version = "0.1.1"
 let plist: [String: Any] = [
     "CFBundleIdentifier": "app.honeycrisp.Honeycrisp",
     "CFBundleName": "Honeycrisp",
@@ -140,8 +141,44 @@ let plistData = try PropertyListSerialization.data(
     fromPropertyList: plist, format: .xml, options: 0)
 try plistData.write(to: contents.appendingPathComponent("Info.plist"))
 
-// 7. Ad-hoc signature so TCC grants stick across rebuilds on this Mac.
-print("signing...")
-try run("/usr/bin/codesign", ["--force", "--deep", "--sign", "-", app.path])
+// 7. Sign. Ad-hoc signatures change every build, and macOS binds grants
+// like Full Disk Access to the signature, so ad-hoc rebuilds orphan them.
+// Prefer a stable identity: HONEYCRISP_SIGN_IDENTITY if set, else the
+// first Apple Development certificate, else ad-hoc with a warning. After
+// the signing identity changes, Full Disk Access needs one off-and-on
+// toggle in System Settings to rebind.
+func signingIdentity() -> String {
+    if let forced = ProcessInfo.processInfo.environment["HONEYCRISP_SIGN_IDENTITY"],
+        !forced.isEmpty
+    {
+        return forced
+    }
+    let process = Process()
+    process.executableURL = URL(fileURLWithPath: "/usr/bin/security")
+    process.arguments = ["find-identity", "-v", "-p", "codesigning"]
+    let pipe = Pipe()
+    process.standardOutput = pipe
+    do {
+        try process.run()
+    } catch {
+        return "-"
+    }
+    process.waitUntilExit()
+    let output = String(
+        decoding: pipe.fileHandleForReading.readDataToEndOfFile(), as: UTF8.self)
+    for line in output.split(separator: "\n") where line.contains("Apple Development") {
+        if let hash = line.split(separator: " ").first(where: { $0.count == 40 }) {
+            return String(hash)
+        }
+    }
+    print(
+        "warning: no stable signing identity found; ad-hoc signatures reset TCC grants on every rebuild"
+    )
+    return "-"
+}
+
+let identity = signingIdentity()
+print(identity == "-" ? "signing ad-hoc..." : "signing with \(identity)...")
+try run("/usr/bin/codesign", ["--force", "--deep", "--sign", identity, app.path])
 
 print("done: \(app.path)")

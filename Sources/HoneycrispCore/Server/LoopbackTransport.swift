@@ -128,11 +128,9 @@ public struct MCPHTTPRouter: Sendable {
             }
             let result = await gateway.callTool(
                 name: params.name, arguments: params.arguments ?? [:], client: client)
-            let structured = try? JSONDecoder().decode(
-                Value.self, from: Data(result.content.utf8))
             let payload = CallTool.Result(
                 content: [.text(result.content)],
-                structuredContent: result.isError ? nil : structured,
+                structuredContent: result.isError ? nil : Self.objectValue(result.content),
                 isError: result.isError
             )
             return respond(id: id, result: payload)
@@ -144,6 +142,17 @@ public struct MCPHTTPRouter: Sendable {
     }
 
     // MARK: - Envelopes
+
+    /// The MCP spec defines structuredContent as a JSON object, and strict
+    /// clients (Claude Desktop) reject whole tool results that violate it,
+    /// so arrays and scalars send no structuredContent at all. The content
+    /// text carries the full JSON either way.
+    static func objectValue(_ json: String) -> Value? {
+        guard let value = try? JSONDecoder().decode(Value.self, from: Data(json.utf8)),
+            case .object = value
+        else { return nil }
+        return value
+    }
 
     private func decode<T: Decodable>(_ params: Value?) -> T? {
         guard let params, let data = try? JSONEncoder().encode(params) else { return nil }
