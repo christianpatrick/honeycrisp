@@ -40,13 +40,25 @@ struct PermissionEngineTests {
         #expect(config.level(for: .mail) == .read)
     }
 
-    @Test("raising to write turns reads on and leaves write switches as they were")
+    @Test("raising to write turns every action on, with sends still approval-gated")
     func raiseToWrite() {
         var config = HoneycrispConfig.default
         config.setLevel(.write, for: .messages)
         #expect(config.isOn(app: .messages, action: "recent"))
-        #expect(config.isOn(app: .messages, action: "draft") == false)
-        #expect(config.isOn(app: .messages, action: "send") == false)
+        #expect(config.isOn(app: .messages, action: "draft"))
+        #expect(config.isOn(app: .messages, action: "send"))
+        #expect(config.isOn(app: .messages, action: "mark_read"))
+        #expect(config.decision(app: .messages, action: "send") == .needsApproval)
+    }
+
+    @Test("read then read & write round-trips to everything on")
+    func readThenWrite() {
+        var config = HoneycrispConfig.default
+        config.setLevel(.read, for: .mail)
+        config.setLevel(.write, for: .mail)
+        for action in ActionCatalog.actions(for: .mail) {
+            #expect(config.isOn(app: .mail, action: action.id))
+        }
     }
 
     @Test("enabling a write action auto-raises the level so the switch is effective")

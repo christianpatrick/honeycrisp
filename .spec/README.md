@@ -51,3 +51,4 @@ Checkable statements that make this task done.
 | HC-013 | v0.1.1 fixes: structuredContent shape, collapsed panel, stable signing | done |
 | HC-014 | Chrome consistency and in-app copy trim | done |
 | HC-015 | Bring the Settings window to the front | done |
+| HC-016 | Simple mode Read & write enables every action | done |

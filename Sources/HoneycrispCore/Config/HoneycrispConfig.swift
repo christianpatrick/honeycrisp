@@ -97,9 +97,11 @@ extension HoneycrispConfig {
 // MARK: - Mutation
 
 extension HoneycrispConfig {
-    /// Simple mode. Mirrors the panel spec setPerm: off clears every switch, read
-    /// turns reads on and writes off, write turns reads on and leaves write
-    /// switches as they were.
+    /// Simple mode is blunt and predictable (HC-016, superseding the
+    /// mock-faithful HC-002 semantics that left write switches untouched):
+    /// off clears everything, read turns reads on and writes off, and
+    /// write turns every action on. Outbound sends keep their mandatory
+    /// per-request approval regardless, so write never means silent sends.
     public mutating func setLevel(_ level: PermissionLevel, for app: AppID) {
         levels[app] = level
         for action in ActionCatalog.actions(for: app) {
@@ -109,7 +111,7 @@ extension HoneycrispConfig {
             case .read:
                 switches[app, default: [:]][action.id] = action.kind == .read
             case .write:
-                if action.kind == .read { switches[app, default: [:]][action.id] = true }
+                switches[app, default: [:]][action.id] = true
             }
         }
     }
