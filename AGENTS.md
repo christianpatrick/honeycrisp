@@ -39,10 +39,11 @@ Honeycrisp is a local MCP server for macOS that gives any MCP client fast, priva
 
 ## Voice and copy rules
 
-- No em-dashes in anything we author: not in docs, not in code comments, not in commit messages, not in UI strings. Use commas, periods, colons, or the word "and" instead. This rule is non-negotiable. The one exception is the spec, which is preserved byte for byte as delivered it.
+- No em-dashes in anything we author: not in docs, not in code comments, not in commit messages, not in UI strings. Use commas, periods, colons, or the word "and" instead. This rule is non-negotiable.
+- The product spec files are never committed. The spec stays local and gitignored at the spec  (see AGENTS.md); the repo carries only the shippable artwork committed, under assets/. Builds and packaging must never depend on the spec existing.
 - Full sentences in user-facing copy. Sentence case. No emoji in product copy. The README speaks as Christian in the first person singular.
 - Privacy is phrased concretely (on your Mac, nothing uploaded, a local activity list you can clear), never as a buzzword.
-- Brand tokens, voice guidance, and assets live in the spec. The chosen UI direction is System: stock macOS materials, SF Pro, with Honeycrisp red #C5453A as the accent and the four hand-built app icons. The chosen README banner is the letter pair.
+- Brand tokens and voice guidance come from the product spec (local, uncommitted); the shippable artwork lives in assets/. The chosen UI direction is System: stock macOS materials, SF Pro, with Honeycrisp red #C5453A as the accent and the four hand-built app icons. The chosen README banner is the letter pair.
 
 ## Build and test
 
@@ -52,6 +53,7 @@ Honeycrisp is a local MCP server for macOS that gives any MCP client fast, priva
 
 ## Findings log
 
+- 2026-06-09: Christian's rule, learned the hard way: the product spec files are never committed. The original HC-001 import was purged from the entire history with filter-branch (the repo was local-only with no remote, and a pre-rewrite bundle was saved), the spec  is now gitignored, and packaging sources artwork from assets/ only.
 - 2026-06-09 (HC-012): Live verification through the packaged app on this Mac: /health, initialize, gated tools/list, a denied mail_send writing the real audit entry, and the CLI auto-bridging stdio through the running app with exact client attribution all verified. Two behaviors to know: the prior build's config.json carried its port (8765) through tolerant decoding, which is intended, so the hub serves there until the user changes it in Settings; and an allowed call that touches an ungranted framework suspends inside the system permission prompt until the user answers, which is correct first-use behavior but means a smoke test against an ungranted app hangs rather than failing.
 
 - 2026-06-09: The development harness running this work can neither show TCC prompts (CNContactStore.requestAccess auto-denies with CNError 100 while the status stays notDetermined) nor read FDA-protected stores (chat.db and ~/Library/Mail are "authorization denied" even unsandboxed). Gated integration tests therefore run from a TCC-capable host: launch them from Terminal.app, which can present prompts and can be granted Full Disk Access in System Settings. The authoritative end-to-end verification is through the packaged Honeycrisp.app (HC-012), which is the product's real TCC identity and the grant-once story we ship.

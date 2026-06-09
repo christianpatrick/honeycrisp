@@ -57,24 +57,33 @@ try fileManager.createDirectory(at: resources, withIntermediateDirectories: true
 try fileManager.copyItem(at: appExecutable, to: macOS.appendingPathComponent("Honeycrisp"))
 try fileManager.copyItem(at: cliExecutable, to: macOS.appendingPathComponent("honeycrisp-cli"))
 
-// 4. Brand resources from the product spec.
-let specAssets = root.appendingPathComponent("the brand assets")
-for name in [
-    "icon.svg", "glyph-black.svg", "glyph-white.svg",
-    "mail.svg", "reminders.svg", "messages.svg", "contacts.svg",
-    "seed.svg", "star.svg",
-] {
-    let source = specAssets.appendingPathComponent(name)
-    if fileManager.fileExists(atPath: source.path) {
-        try fileManager.copyItem(at: source, to: resources.appendingPathComponent(name))
+// 4. Brand resources from the committed artwork in assets/ (the product
+// spec itself is never committed and packaging must not depend on it).
+// Keys are the resource names the app loads; values are repo paths.
+let artwork: [String: String] = [
+    "icon.svg": "assets/marks/honeycrisp-icon.svg",
+    "glyph-black.svg": "assets/marks/honeycrisp-glyph-black.svg",
+    "glyph-white.svg": "assets/marks/honeycrisp-glyph-white.svg",
+    "mail.svg": "assets/app-icons/mail.svg",
+    "reminders.svg": "assets/app-icons/reminders.svg",
+    "messages.svg": "assets/app-icons/messages.svg",
+    "contacts.svg": "assets/app-icons/contacts.svg",
+    "seed.svg": "assets/marks/seed.svg",
+    "star.svg": "assets/marks/star.svg",
+]
+for (name, path) in artwork {
+    let source = root.appendingPathComponent(path)
+    guard fileManager.fileExists(atPath: source.path) else {
+        fail("missing artwork: \(path)")
     }
+    try fileManager.copyItem(at: source, to: resources.appendingPathComponent(name))
 }
 
 // 5. App icon: flat render of the brand icon into an icns. The true Liquid
 // Glass icon needs an Xcode-built asset catalog; this render is the
 // documented fallback.
 print("rendering icon...")
-let iconSource = specAssets.appendingPathComponent("icon.svg")
+let iconSource = root.appendingPathComponent("assets/marks/honeycrisp-icon.svg")
 if let svgImage = NSImage(contentsOf: iconSource) {
     let iconset = root.appendingPathComponent("dist/AppIcon.iconset")
     try? fileManager.removeItem(at: iconset)
