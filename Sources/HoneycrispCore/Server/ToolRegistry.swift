@@ -214,21 +214,6 @@ public enum ToolRegistry {
                 ],
                 required: ["query"])
         ),
-        "messages_draft": Definition(
-            description:
-                "Compose a reply in Messages that is sent only after the user approves it from a notification.",
-            schema: schema(
-                properties: [
-                    "recipient": prop("string", "Who to message: a contact name, phone number, or email."),
-                    "body": prop("string", "The message text."),
-                ],
-                required: ["recipient", "body"]),
-            approvalSubtitle: "Sending the draft needs your approval.",
-            approvalMessage: { client, arguments in
-                let recipient = string(arguments["recipient"]) ?? "someone"
-                return "\(client) wants to send a reply to \(recipient)."
-            }
-        ),
         "messages_send": Definition(
             description:
                 "Send a message after the user approves it from a notification.",

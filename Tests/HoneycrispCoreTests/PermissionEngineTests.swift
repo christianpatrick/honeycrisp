@@ -12,7 +12,7 @@ struct PermissionEngineTests {
         #expect(config.decision(app: .messages, action: "recent") == .allowed)
         // Levels gate before switches, so a write under a read level reports
         // readOnlyApp even when its switch is also off.
-        #expect(config.decision(app: .messages, action: "draft") == .denied(.readOnlyApp))
+        #expect(config.decision(app: .messages, action: "send") == .denied(.readOnlyApp))
         #expect(config.decision(app: .reminders, action: "create") == .allowed)
         #expect(config.decision(app: .contacts, action: "create") == .denied(.readOnlyApp))
         #expect(config.decision(app: .calendar, action: "today") == .allowed)
@@ -47,7 +47,6 @@ struct PermissionEngineTests {
         var config = HoneycrispConfig.default
         config.setLevel(.write, for: .messages)
         #expect(config.isOn(app: .messages, action: "recent"))
-        #expect(config.isOn(app: .messages, action: "draft"))
         #expect(config.isOn(app: .messages, action: "send"))
         #expect(config.isOn(app: .messages, action: "mark_read"))
         #expect(config.decision(app: .messages, action: "send") == .needsApproval)

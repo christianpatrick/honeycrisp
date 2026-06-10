@@ -125,7 +125,7 @@ if let svgImage = NSImage(contentsOf: iconSource) {
 
 // 6. Info.plist. The bundle id is locked (changing it resets TCC grants).
 // Keep in sync with HoneycrispInfo.version.
-let version = "0.2.1"
+let version = "0.2.2"
 let plist: [String: Any] = [
     "CFBundleIdentifier": "app.honeycrisp.Honeycrisp",
     "CFBundleName": "Honeycrisp",
@@ -148,7 +148,7 @@ let plist: [String: Any] = [
     "NSCalendarsUsageDescription":
         "Honeycrisp reads and creates calendar events only when your assistant asks. Nothing leaves your Mac.",
     "NSAppleEventsUsageDescription":
-        "Honeycrisp drives Mail and Messages only to save drafts and send what you approve. Nothing leaves your Mac without you.",
+        "Honeycrisp drives Mail and Messages only to save a Mail draft, mark messages read, and send what you approve. Nothing leaves your Mac without you.",
     "NSHumanReadableCopyright": "MIT licensed. Made with care by Christian.",
 ]
 let plistData = try PropertyListSerialization.data(

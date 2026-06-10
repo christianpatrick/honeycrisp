@@ -92,18 +92,15 @@ struct MessagesToolsTests {
         }
     }
 
-    @Test("draft sends through the service with the draft audit sentence")
-    func draft() async throws {
-        let service = FakeMessagesService()
-        let tools = MessagesTools(service: service)
-        let outcome = try await tools.execute(
-            action: "draft",
-            arguments: ["recipient": "Maya", "body": "running 10 min late, start without me"],
-            defaultLimit: 20)
-        #expect(await service.sends.count == 1)
-        #expect(outcome.auditAction == "Drafted a reply to Maya")
-        #expect(outcome.auditSummary.contains("approved"))
-        #expect(outcome.auditRows.contains { $0.label == "Draft" })
+    @Test("there is no draft action; iMessage cannot draft, only send")
+    func noDraft() async {
+        let tools = MessagesTools(service: FakeMessagesService())
+        await #expect(throws: ToolFailure.self) {
+            _ = try await tools.execute(
+                action: "draft",
+                arguments: ["recipient": "Maya", "body": "hi"],
+                defaultLimit: 20)
+        }
     }
 
     @Test("send uses the send audit sentence and passes the body through")
@@ -120,7 +117,7 @@ struct MessagesToolsTests {
         #expect(outcome.auditAction == "Sent a message to +15551234567")
     }
 
-    @Test("draft and send require recipient and body")
+    @Test("send requires recipient and body")
     func sendValidation() async {
         let tools = MessagesTools(service: FakeMessagesService())
         await #expect(throws: ToolFailure.self) {
@@ -128,7 +125,7 @@ struct MessagesToolsTests {
                 action: "send", arguments: ["recipient": "Maya"], defaultLimit: 20)
         }
         await #expect(throws: ToolFailure.self) {
-            _ = try await tools.execute(action: "draft", arguments: ["body": "hi"], defaultLimit: 20)
+            _ = try await tools.execute(action: "send", arguments: ["body": "hi"], defaultLimit: 20)
         }
     }
 

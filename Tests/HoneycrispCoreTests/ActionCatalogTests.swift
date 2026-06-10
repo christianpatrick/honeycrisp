@@ -3,20 +3,25 @@ import HoneycrispCore
 
 @Suite("Action catalog")
 struct ActionCatalogTests {
-    @Test("twenty actions with the designed per-app counts")
+    @Test("nineteen actions with the designed per-app counts")
     func actionCounts() {
-        #expect(ActionCatalog.all.count == 20)
+        #expect(ActionCatalog.all.count == 19)
         #expect(ActionCatalog.actions(for: .mail).count == 5)
         #expect(ActionCatalog.actions(for: .reminders).count == 4)
         #expect(ActionCatalog.actions(for: .calendar).count == 3)
-        #expect(ActionCatalog.actions(for: .messages).count == 5)
+        #expect(ActionCatalog.actions(for: .messages).count == 4)
         #expect(ActionCatalog.actions(for: .contacts).count == 3)
     }
 
-    @Test("exactly the three outbound writes require approval")
+    @Test("exactly the two outbound sends require approval")
     func approvalActions() {
         let ids = Set(ActionCatalog.all.filter(\.requiresApproval).map { "\($0.app.rawValue).\($0.id)" })
-        #expect(ids == ["mail.send", "messages.send", "messages.draft"])
+        #expect(ids == ["mail.send", "messages.send"])
+    }
+
+    @Test("messages has no draft action; iMessage cannot draft")
+    func noMessagesDraft() {
+        #expect(ActionCatalog.descriptor(app: .messages, action: "draft") == nil)
     }
 
     @Test("spot checks against the catalog spec")

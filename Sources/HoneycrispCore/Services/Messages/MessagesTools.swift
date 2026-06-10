@@ -20,10 +20,8 @@ public struct MessagesTools: Sendable {
             return try await recent(arguments, defaultLimit: defaultLimit)
         case "search":
             return try await search(arguments, defaultLimit: defaultLimit)
-        case "draft":
-            return try await send(arguments, asDraft: true)
         case "send":
-            return try await send(arguments, asDraft: false)
+            return try await send(arguments)
         case "mark_read":
             return try await markRead(arguments)
         default:
@@ -71,29 +69,17 @@ public struct MessagesTools: Sendable {
         )
     }
 
-    private func send(_ arguments: [String: Value], asDraft: Bool) async throws -> ToolOutcome {
+    private func send(_ arguments: [String: Value]) async throws -> ToolOutcome {
         guard let recipient = string(arguments["recipient"]), !recipient.isEmpty else {
             throw ToolFailure(
-                "messages_\(asDraft ? "draft" : "send") needs a recipient: a contact name, phone number, or email."
+                "messages_send needs a recipient: a contact name, phone number, or email."
             )
         }
         guard let body = string(arguments["body"]), !body.isEmpty else {
-            throw ToolFailure("messages_\(asDraft ? "draft" : "send") needs the message body.")
+            throw ToolFailure("messages_send needs the message body.")
         }
         let receipt = try await service.send(recipient: recipient, body: body)
         let preview = body.count > 60 ? "\(body.prefix(57))..." : body
-        if asDraft {
-            return ToolOutcome(
-                content: try ToolJSON.encode(receipt),
-                auditAction: "Drafted a reply to \(recipient)",
-                auditSummary: "The draft was sent after you approved it.",
-                auditRows: [
-                    AuditDetailRow(label: "To", value: receipt.conversation),
-                    AuditDetailRow(label: "Draft", value: "\u{201C}\(preview)\u{201D}"),
-                    AuditDetailRow(label: "Sent", value: "Yes, after approval"),
-                ]
-            )
-        }
         return ToolOutcome(
             content: try ToolJSON.encode(receipt),
             auditAction: "Sent a message to \(recipient)",
