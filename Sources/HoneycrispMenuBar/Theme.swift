@@ -106,6 +106,9 @@ struct ThemedSegments<Option: Hashable>: View {
                         .shadow(color: .black.opacity(selected ? 0.12 : 0), radius: 1, y: 0.5)
                 )
                 .foregroundStyle(selected ? .primary : .secondary)
+                // A clear fill is not hit-tested, so without this the
+                // padding around an unselected segment ignores clicks.
+                .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
     }

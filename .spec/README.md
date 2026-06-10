@@ -59,3 +59,4 @@ Checkable statements that make this task done.
 | HC-021 | Mark mail as read | done |
 | HC-022 | The wordmark in the app | done |
 | HC-023 | Calendar service | done |
+| HC-024 | Whole-segment tap targets | done |
