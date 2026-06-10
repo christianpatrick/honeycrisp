@@ -9,7 +9,7 @@ public enum HoneycrispServer {
             name: "Honeycrisp",
             version: HoneycrispInfo.version,
             instructions:
-                "Honeycrisp gives you fast, private, native access to this Mac's Mail, Reminders, Messages, and Contacts. Reads return structured JSON. Sends go out only after the user approves a notification.",
+                "Honeycrisp gives you fast, private, native access to this Mac's Mail, Reminders, Calendar, Messages, and Contacts. Reads return structured JSON. Sends go out only after the user approves a notification.",
             capabilities: .init(tools: .init(listChanged: false))
         )
     }

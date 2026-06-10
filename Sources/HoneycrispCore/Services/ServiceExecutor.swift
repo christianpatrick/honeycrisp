@@ -8,6 +8,7 @@ public struct ServiceExecutor: ToolExecutor {
     private let configProvider: @Sendable () -> HoneycrispConfig
     private let contacts: ContactsTools?
     private let reminders: RemindersTools?
+    private let calendar: CalendarTools?
     private let messages: MessagesTools?
     private let mail: MailTools?
 
@@ -15,12 +16,14 @@ public struct ServiceExecutor: ToolExecutor {
         configProvider: @escaping @Sendable () -> HoneycrispConfig,
         contacts: (any ContactsServicing)? = nil,
         reminders: (any RemindersServicing)? = nil,
+        calendar: (any CalendarServicing)? = nil,
         messages: (any MessagesServicing)? = nil,
         mail: (any MailServicing)? = nil
     ) {
         self.configProvider = configProvider
         self.contacts = contacts.map(ContactsTools.init)
         self.reminders = reminders.map(RemindersTools.init)
+        self.calendar = calendar.map(CalendarTools.init)
         self.messages = messages.map(MessagesTools.init)
         self.mail = mail.map(MailTools.init)
     }
@@ -33,6 +36,7 @@ public struct ServiceExecutor: ToolExecutor {
             configProvider: configProvider,
             contacts: CNContactsService(),
             reminders: EKRemindersService(),
+            calendar: EKCalendarService(),
             messages: MessagesService(),
             mail: MailService()
         )
@@ -54,6 +58,12 @@ public struct ServiceExecutor: ToolExecutor {
                 throw ToolFailure("Reminders is not wired up in this build.")
             }
             return try await reminders.execute(action: action, arguments: arguments, config: config)
+        case .calendar:
+            guard let calendar else {
+                throw ToolFailure("Calendar is not wired up in this build.")
+            }
+            return try await calendar.execute(
+                action: action, arguments: arguments, defaultLimit: config.defaultLimit)
         case .messages:
             guard let messages else {
                 throw ToolFailure("Messages is not wired up in this build.")

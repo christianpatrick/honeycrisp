@@ -69,7 +69,7 @@ struct ToolGatewayTests {
         )
     }
 
-    @Test("the default config lists exactly the eleven visible tools")
+    @Test("the default config lists exactly the thirteen visible tools")
     func defaultListing() {
         let gateway = makeGateway(audit: AuditStore(fileURL: tempAuditURL()))
         let names = Set(gateway.listTools().map(\.name))
@@ -77,6 +77,7 @@ struct ToolGatewayTests {
             names == [
                 "mail_search", "mail_read", "mail_draft",
                 "reminders_list", "reminders_due", "reminders_create", "reminders_complete",
+                "calendar_today", "calendar_list",
                 "messages_recent", "messages_search",
                 "contacts_lookup", "contacts_fields",
             ])

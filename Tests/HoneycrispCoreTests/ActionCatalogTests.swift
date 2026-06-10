@@ -3,11 +3,12 @@ import HoneycrispCore
 
 @Suite("Action catalog")
 struct ActionCatalogTests {
-    @Test("seventeen actions with the designed per-app counts")
+    @Test("twenty actions with the designed per-app counts")
     func actionCounts() {
-        #expect(ActionCatalog.all.count == 17)
+        #expect(ActionCatalog.all.count == 20)
         #expect(ActionCatalog.actions(for: .mail).count == 5)
         #expect(ActionCatalog.actions(for: .reminders).count == 4)
+        #expect(ActionCatalog.actions(for: .calendar).count == 3)
         #expect(ActionCatalog.actions(for: .messages).count == 5)
         #expect(ActionCatalog.actions(for: .contacts).count == 3)
     }
@@ -45,9 +46,24 @@ struct ActionCatalogTests {
 
     @Test("app display data carries the designed names and blurbs")
     func appDescriptors() throws {
-        #expect(ActionCatalog.apps.map(\.id) == [.mail, .reminders, .messages, .contacts])
+        #expect(
+            ActionCatalog.apps.map(\.id) == [.mail, .reminders, .calendar, .messages, .contacts])
         let mail = try #require(ActionCatalog.apps.first { $0.id == .mail })
         #expect(mail.name == "Mail")
         #expect(mail.blurb == "Search, read, and draft mail.")
+    }
+
+    @Test("calendar actions match the spec")
+    func calendarActions() throws {
+        let today = try #require(ActionCatalog.descriptor(app: .calendar, action: "today"))
+        #expect(today.label == "Check what is on today")
+        #expect(today.kind == .read)
+        #expect(today.defaultOn)
+
+        let create = try #require(ActionCatalog.descriptor(app: .calendar, action: "create"))
+        #expect(create.label == "Create an event")
+        #expect(create.kind == .write)
+        #expect(create.defaultOn == false)
+        #expect(create.requiresApproval == false)
     }
 }

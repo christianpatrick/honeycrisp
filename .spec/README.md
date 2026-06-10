@@ -57,3 +57,5 @@ Checkable statements that make this task done.
 | HC-019 | Probe the Envelope Index recipients schema at runtime | done |
 | HC-020 | Readable text from HTML-only mail | done |
 | HC-021 | Mark mail as read | done |
+| HC-022 | The wordmark in the app | done |
+| HC-023 | Calendar service | done |

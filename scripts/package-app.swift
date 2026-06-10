@@ -68,6 +68,7 @@ let artwork: [String: String] = [
     "reminders.svg": "assets/app-icons/reminders.svg",
     "messages.svg": "assets/app-icons/messages.svg",
     "contacts.svg": "assets/app-icons/contacts.svg",
+    "calendar.svg": "assets/app-icons/calendar.svg",
     "seed.svg": "assets/marks/seed.svg",
     "star.svg": "assets/marks/star.svg",
 ]
@@ -77,6 +78,15 @@ for (name, path) in artwork {
         fail("missing artwork: \(path)")
     }
     try fileManager.copyItem(at: source, to: resources.appendingPathComponent(name))
+}
+
+// 4b. The brand font (OFL licensed; the license ships beside it).
+for fontFile in ["Sora[wght].ttf", "OFL.txt"] {
+    let source = root.appendingPathComponent("assets/fonts/\(fontFile)")
+    guard fileManager.fileExists(atPath: source.path) else {
+        fail("missing font file: assets/fonts/\(fontFile)")
+    }
+    try fileManager.copyItem(at: source, to: resources.appendingPathComponent(fontFile))
 }
 
 // 5. App icon: flat render of the brand icon into an icns. The true Liquid
@@ -115,7 +125,7 @@ if let svgImage = NSImage(contentsOf: iconSource) {
 
 // 6. Info.plist. The bundle id is locked (changing it resets TCC grants).
 // Keep in sync with HoneycrispInfo.version.
-let version = "0.1.8"
+let version = "0.2.0"
 let plist: [String: Any] = [
     "CFBundleIdentifier": "app.honeycrisp.Honeycrisp",
     "CFBundleName": "Honeycrisp",
@@ -133,6 +143,10 @@ let plist: [String: Any] = [
         "Honeycrisp reads and creates reminders only when your assistant asks. Nothing leaves your Mac.",
     "NSRemindersUsageDescription":
         "Honeycrisp reads and creates reminders only when your assistant asks. Nothing leaves your Mac.",
+    "NSCalendarsFullAccessUsageDescription":
+        "Honeycrisp reads and creates calendar events only when your assistant asks. Nothing leaves your Mac.",
+    "NSCalendarsUsageDescription":
+        "Honeycrisp reads and creates calendar events only when your assistant asks. Nothing leaves your Mac.",
     "NSAppleEventsUsageDescription":
         "Honeycrisp drives Mail and Messages only to save drafts and send what you approve. Nothing leaves your Mac without you.",
     "NSHumanReadableCopyright": "MIT licensed. Made with care by Christian.",

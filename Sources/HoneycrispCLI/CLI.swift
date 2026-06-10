@@ -133,7 +133,7 @@ struct HoneycrispCommand {
         honeycrisp \(HoneycrispInfo.version)
 
         A local MCP server for macOS that gives your assistant fast, private,
-        native access to Mail, Reminders, Messages, and Contacts.
+        native access to Mail, Reminders, Calendar, Messages, and Contacts.
 
         Usage:
           honeycrisp serve [--port N] [--apps mail,reminders] [--read-only]

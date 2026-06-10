@@ -4,14 +4,14 @@ Working agreements for Honeycrisp. Read this before changing anything. CLAUDE.md
 
 ## What Honeycrisp is
 
-Honeycrisp is a local MCP server for macOS that gives any MCP client fast, private, native access to Mail, Reminders, Messages, and Contacts. It is MIT licensed and it never phones home: no telemetry, no analytics, no crash reporting, loopback networking only. The only record it keeps is a local activity log the user can inspect and clear.
+Honeycrisp is a local MCP server for macOS that gives any MCP client fast, private, native access to Mail, Reminders, Calendar, Messages, and Contacts. It is MIT licensed and it never phones home: no telemetry, no analytics, no crash reporting, loopback networking only. The only record it keeps is a local activity log the user can inspect and clear.
 
 ## Architecture (decided 2026-06-09)
 
 - The menu bar app is the hub. Honeycrisp.app (SwiftUI MenuBarExtra, LSUIElement) hosts the MCP server in process over loopback HTTP, default 127.0.0.1:41117. The app owns the TCC identity, so the user grants each macOS permission once to the app instead of once per MCP client.
 - The honeycrisp CLI is the bridge. Clients like Claude Desktop run `honeycrisp serve` over stdio. When the app is running, the CLI proxies stdio to the app's HTTP endpoint so every request flows through one supervised process. When the app is not running, the CLI serves standalone over stdio with the same config file, and actions that need notification approval fail closed with an error that tells the user to open the app.
 - How we touch Apple apps, in strict order of preference:
-  1. A native framework when one exists, for reads and writes both: EventKit for Reminders, the Contacts framework for Contacts.
+  1. A native framework when one exists, for reads and writes both: EventKit for Reminders and Calendar, the Contacts framework for Contacts.
   2. Read-only database and file access when no framework exists: chat.db SQLite for Messages reads, Mail's Envelope Index SQLite plus .emlx files for Mail reads. Open read-only. We never write to a data store another app owns, ever: no chat.db writes, no Envelope Index writes, no .emlx injection. If Honeycrisp needs an index of its own, it builds one inside its own Application Support folder.
   3. In-process Apple events, only for the few outbound writes that have no framework or store-safe path: composing a Mail draft, sending mail, sending a message. These are raw Apple events sent from Swift under the Automation permission. We never spawn osascript and we never compile or run AppleScript source; both are slow and brittle, and the whole point of Honeycrisp is to not be that.
   4. Driving the app's visible surface as a last resort when even Apple events cannot do something safely: marking a conversation read works by opening the chat through the Messages URL scheme so the Messages daemon updates its own state through its own path.
@@ -26,7 +26,7 @@ Honeycrisp is a local MCP server for macOS that gives any MCP client fast, priva
 
 - Each app has a level: off, read, or write. Write implies read. Each action has a switch. Simple mode sets levels; Advanced mode sets switches.
 - Level changes reset switches deterministically (HC-016 semantics): off turns every action off, read turns read actions on and write actions off, and write turns every action on. Simple mode is the blunt instrument and Advanced is the curation surface; outbound sends always keep their per-request approval, so write never means silent sends.
-- The action catalog comes from the catalog spec plus messages mark read and mail mark read, seventeen actions total. After HC-002 the catalog in code is the single source of truth.
+- The action catalog comes from the catalog spec plus messages mark read, mail mark read, and the calendar trio, twenty actions total across five apps. After HC-002 the catalog in code is the single source of truth.
 - requiresApproval actions are mail.send, messages.send, and messages.draft. These post a notification with Allow once and Don't allow every time they run, are denied on timeout, and land in the audit log as asked or denied. Everything else is auto when its switch is on and blocked when it is off.
 
 ## Process rules

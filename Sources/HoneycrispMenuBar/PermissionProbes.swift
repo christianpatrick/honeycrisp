@@ -28,6 +28,15 @@ enum PermissionProbes {
         return (try? await store.requestFullAccessToReminders()) ?? false
     }
 
+    static func calendarGranted() -> Bool {
+        EKEventStore.authorizationStatus(for: .event) == .fullAccess
+    }
+
+    static func requestCalendar() async -> Bool {
+        let store = EKEventStore()
+        return (try? await store.requestFullAccessToEvents()) ?? false
+    }
+
     /// Whether this process can read the Messages database (Full Disk
     /// Access in practice).
     static func fullDiskGranted() -> Bool {

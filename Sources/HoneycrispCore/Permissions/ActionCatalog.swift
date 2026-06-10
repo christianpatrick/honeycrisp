@@ -4,6 +4,7 @@ import Foundation
 public enum AppID: String, CaseIterable, Codable, Sendable, Hashable {
     case mail
     case reminders
+    case calendar
     case messages
     case contacts
 }
@@ -42,6 +43,7 @@ public enum ActionCatalog {
     public static let apps: [AppDescriptor] = [
         AppDescriptor(id: .mail, name: "Mail", blurb: "Search, read, and draft mail."),
         AppDescriptor(id: .reminders, name: "Reminders", blurb: "See what is due and add new ones."),
+        AppDescriptor(id: .calendar, name: "Calendar", blurb: "See your schedule and add events."),
         AppDescriptor(id: .messages, name: "Messages", blurb: "Read recent texts and draft replies."),
         AppDescriptor(id: .contacts, name: "Contacts", blurb: "Look up people you know."),
     ]
@@ -56,6 +58,9 @@ public enum ActionCatalog {
         ActionDescriptor(app: .reminders, id: "due", label: "Check what is due today", kind: .read, defaultOn: true, requiresApproval: false),
         ActionDescriptor(app: .reminders, id: "create", label: "Create a reminder", kind: .write, defaultOn: true, requiresApproval: false),
         ActionDescriptor(app: .reminders, id: "complete", label: "Mark as done", kind: .write, defaultOn: true, requiresApproval: false),
+        ActionDescriptor(app: .calendar, id: "today", label: "Check what is on today", kind: .read, defaultOn: true, requiresApproval: false),
+        ActionDescriptor(app: .calendar, id: "list", label: "List upcoming events", kind: .read, defaultOn: true, requiresApproval: false),
+        ActionDescriptor(app: .calendar, id: "create", label: "Create an event", kind: .write, defaultOn: false, requiresApproval: false),
         ActionDescriptor(app: .messages, id: "recent", label: "Read recent messages", kind: .read, defaultOn: true, requiresApproval: false),
         ActionDescriptor(app: .messages, id: "search", label: "Search conversations", kind: .read, defaultOn: true, requiresApproval: false),
         ActionDescriptor(app: .messages, id: "draft", label: "Draft a reply", kind: .write, defaultOn: false, requiresApproval: true),

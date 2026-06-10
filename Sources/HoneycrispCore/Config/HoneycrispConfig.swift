@@ -36,7 +36,8 @@ public struct HoneycrispConfig: Codable, Equatable, Sendable {
 
     public static let `default`: HoneycrispConfig = {
         var levels: [AppID: PermissionLevel] = [
-            .mail: .write, .reminders: .write, .messages: .read, .contacts: .read,
+            .mail: .write, .reminders: .write, .calendar: .read,
+            .messages: .read, .contacts: .read,
         ]
         var switches: [AppID: [String: Bool]] = [:]
         for action in ActionCatalog.all {

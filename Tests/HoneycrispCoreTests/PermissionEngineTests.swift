@@ -15,6 +15,8 @@ struct PermissionEngineTests {
         #expect(config.decision(app: .messages, action: "draft") == .denied(.readOnlyApp))
         #expect(config.decision(app: .reminders, action: "create") == .allowed)
         #expect(config.decision(app: .contacts, action: "create") == .denied(.readOnlyApp))
+        #expect(config.decision(app: .calendar, action: "today") == .allowed)
+        #expect(config.decision(app: .calendar, action: "create") == .denied(.readOnlyApp))
     }
 
     @Test("an enabled outbound write needs approval, never plain allowed")

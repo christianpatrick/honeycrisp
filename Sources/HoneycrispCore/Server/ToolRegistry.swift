@@ -167,6 +167,36 @@ public enum ToolRegistry {
                 ],
                 required: ["id"])
         ),
+        "calendar_today": Definition(
+            description: "List today's calendar events, in order.",
+            schema: schema(properties: [
+                "limit": prop("integer", "The most events to return.")
+            ])
+        ),
+        "calendar_list": Definition(
+            description: "List upcoming events over the next days, optionally from one calendar.",
+            schema: schema(
+                properties: [
+                    "days": prop("integer", "How many days ahead to look. Defaults to 7."),
+                    "calendar": prop("string", "Only this calendar, by name."),
+                    "limit": prop("integer", "The most events to return."),
+                ])
+        ),
+        "calendar_create": Definition(
+            description:
+                "Create a calendar event. Start is ISO 8601; the end defaults to one hour later.",
+            schema: schema(
+                properties: [
+                    "title": prop("string", "What the event is called."),
+                    "start": prop("string", "When it starts, ISO 8601, like 2026-06-12T09:00:00."),
+                    "end": prop("string", "When it ends, ISO 8601. Defaults to an hour after start."),
+                    "all_day": prop("boolean", "Make it an all day event."),
+                    "calendar": prop("string", "The calendar to put it on. Defaults to your default calendar."),
+                    "location": prop("string", "Where it happens."),
+                    "notes": prop("string", "Extra notes on the event."),
+                ],
+                required: ["title", "start"])
+        ),
         "messages_recent": Definition(
             description: "Read the most recent Messages conversations with their latest messages.",
             schema: schema(

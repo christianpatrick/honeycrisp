@@ -117,6 +117,7 @@ private struct WelcomeStep: View {
 private struct AccessStep: View {
     @State private var contacts = PermissionProbes.contactsGranted()
     @State private var reminders = PermissionProbes.remindersGranted()
+    @State private var calendar = PermissionProbes.calendarGranted()
     @State private var fullDisk = PermissionProbes.fullDiskGranted()
 
     var body: some View {
@@ -149,6 +150,15 @@ private struct AccessStep: View {
                     }
                 }
                 AccessRow(
+                    app: .calendar,
+                    blurb: "See your schedule and add events.",
+                    granted: calendar
+                ) {
+                    Task {
+                        calendar = await PermissionProbes.requestCalendar()
+                    }
+                }
+                AccessRow(
                     app: .messages,
                     blurb: "Needs Full Disk Access to read recent texts.",
                     granted: fullDisk
@@ -172,6 +182,7 @@ private struct AccessStep: View {
                 try? await Task.sleep(for: .seconds(2))
                 contacts = PermissionProbes.contactsGranted()
                 reminders = PermissionProbes.remindersGranted()
+                calendar = PermissionProbes.calendarGranted()
                 fullDisk = PermissionProbes.fullDiskGranted()
             }
         }

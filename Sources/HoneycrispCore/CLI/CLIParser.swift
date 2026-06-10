@@ -67,7 +67,7 @@ public enum CLIParser {
                     let name = raw.trimmingCharacters(in: .whitespaces).lowercased()
                     guard let app = AppID(rawValue: name) else {
                         throw CLIError(
-                            "\u{201C}\(name)\u{201D} is not one of mail, reminders, messages, contacts."
+                            "\u{201C}\(name)\u{201D} is not one of mail, reminders, calendar, messages, contacts."
                         )
                     }
                     apps.append(app)
