@@ -8,3 +8,4 @@ dist/
 
 # The product spec stay local; we never commit them. See AGENTS.md.
 the spec 
+the brand spec

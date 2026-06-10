@@ -82,8 +82,7 @@ struct PanelView: View {
                     .overlay(Image(systemName: "seal.fill").font(.system(size: 13)).foregroundStyle(.white))
             }
             VStack(alignment: .leading, spacing: 1) {
-                Text("Honeycrisp")
-                    .font(.system(size: 15, weight: .semibold))
+                Wordmark(size: 15)
                 Text(model.statusLine)
                     .font(.system(size: 11.5))
                     .foregroundStyle(.secondary)

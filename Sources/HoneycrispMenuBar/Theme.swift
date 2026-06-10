@@ -19,13 +19,47 @@ enum Theme {
         switch app {
         case .mail: return ("envelope.fill", Color(red: 0.10, green: 0.46, blue: 0.95))
         case .reminders: return ("checklist", Color(red: 0.95, green: 0.40, blue: 0.30))
+        case .calendar: return ("calendar", Theme.red)
         case .messages: return ("message.fill", Color(red: 0.22, green: 0.78, blue: 0.35))
         case .contacts: return ("person.crop.square.fill", Color(white: 0.55))
         }
     }
 }
 
+import CoreText
 import HoneycrispCore
+
+/// The brand face. Registers the vendored Sora variable font (OFL licensed,
+/// shipped in Resources) once; bare swift run has no bundle resource and
+/// falls back to the system font.
+enum BrandFont {
+    private static let registered: Bool = {
+        guard
+            let url = Bundle.main.resourceURL?.appendingPathComponent("Sora[wght].ttf"),
+            FileManager.default.fileExists(atPath: url.path)
+        else { return false }
+        return CTFontManagerRegisterFontsForURL(url as CFURL, .process, nil)
+    }()
+
+    static func sora(_ size: CGFloat, weight: Font.Weight = .semibold) -> Font {
+        registered
+            ? Font.custom("Sora", size: size).weight(weight)
+            : .system(size: size, weight: weight)
+    }
+}
+
+/// The locked mark from the brand card: Honeycrisp in Sora
+/// semibold at -0.03em tracking, with a brand-red period.
+struct Wordmark: View {
+    var size: CGFloat = 15
+
+    var body: some View {
+        (Text("Honeycrisp") + Text(".").foregroundColor(Theme.red))
+            .font(BrandFont.sora(size))
+            .kerning(-0.03 * size)
+            .lineLimit(1)
+    }
+}
 
 extension View {
     /// The one place the app's chrome is decided: the brand red drives
