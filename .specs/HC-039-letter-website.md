@@ -14,7 +14,8 @@ Honeycrisp needs a public home that is more welcoming than a README. A design co
 - The site is served at the root of https://honeycrisp.app, the custom domain configured in the repository's Pages settings. GitHub redirects the github.io address on its own.
 - Plausible analytics through @plausible-analytics/tracker: cookieless pageviews, outbound link tracking, and a Download custom event carrying the release URL. The site ID is the public domain, hardcoded because it ships in every page's source by design; no repository secret or variable exists for it, and localhost is never captured.
 - One source of truth for artwork: the page imports the icon and the five app icons straight from the repository's assets/ folder, the same files the README and app use, including the favicon. No copies under website/.
-- A small footer credit, "Built with apples by Christian.", linking to https://mynameischristian.com/ in a new tab with rel noopener.
+- A footer credit appears small: "Built with apples by Christian.", linking to https://mynameischristian.com/ in a new tab with rel noopener.
+- Proof of the app: when menu bar screenshots exist under website/src/assets/screenshots, the letter grows a sideways scroll-snap strip of taped prints after the apps list, a couple visible and the next one cut off as the cue to slide, pure CSS with no carousel script. Until the PNGs land, the page builds without the section.
 - .github/workflows/website.yml: build and test on pull requests, build and deploy to GitHub Pages on pushes to main, filtered to website/**, assets/**, and the workflow itself. Every action pinned to a commit SHA, matching HC-036.
 - Release isolation: semantic-release ignores the website commit scope so site work never cuts an app release. Swift packaging already reads nothing from website/.
 - AGENTS.md gains a Website section recording these decisions.

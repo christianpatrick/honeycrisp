@@ -1,4 +1,5 @@
 ---
+import { Image } from "astro:assets";
 import "../styles/global.css";
 import portrait from "../assets/christian.jpg";
 // The brand artwork is the app's own: these imports reach out of website/
@@ -10,6 +11,36 @@ import remindersIcon from "../../../assets/app-icons/reminders.svg?raw";
 import calendarIcon from "../../../assets/app-icons/calendar.svg?raw";
 import messagesIcon from "../../../assets/app-icons/messages.svg?raw";
 import contactsIcon from "../../../assets/app-icons/contacts.svg?raw";
+
+// Menu bar screenshots become a sideways strip of taped prints. The strip
+// renders only when files exist under src/assets/screenshots, so the page
+// ships clean until the PNGs land.
+const shotModules = import.meta.glob("../assets/screenshots/*.png", { eager: true });
+const shotMeta = {
+  "01-activity": {
+    caption: "every action, on the record",
+    alt: "The Honeycrisp menu bar app's activity list: each request logged with which client asked and when, every row marked Allowed",
+  },
+  "02-permissions-simple": {
+    caption: "you decide what it may do",
+    alt: "The permissions panel in Simple mode: Mail, Reminders, Calendar, and Messages each set to Off, Read, or Read and write with one control",
+  },
+  "03-permissions-advanced": {
+    caption: "down to the single switch",
+    alt: "The permissions panel in Advanced mode: individual read and write switches for each Mail action",
+  },
+  "04-status": {
+    caption: "and the whole picture, at a glance",
+    alt: "The status tab: requests today, the connected client, and every app listed as read only",
+  },
+};
+const screenshots = Object.entries(shotModules)
+  .map(([path, mod]) => {
+    const name = path.split("/").pop().replace(".png", "");
+    const meta = shotMeta[name] ?? { caption: name.replace(/^\d+-/, "").replace(/-/g, " "), alt: name };
+    return { img: mod.default, name, ...meta };
+  })
+  .sort((a, b) => a.name.localeCompare(b.name));
 
 const repo = "https://github.com/christianpatrick/honeycrisp";
 const base = import.meta.env.BASE_URL.endsWith("/")
@@ -156,6 +187,26 @@ const apps = [
           ))
         }
       </ul>
+
+      {
+        screenshots.length > 0 && (
+          <section class="proof">
+            <p>Here is what that looks like, sitting quietly in the menu bar.</p>
+            <div class="strip" tabindex="0" aria-label="Screenshots of the menu bar app. Scroll sideways for more.">
+              {screenshots.map((shot, i) => (
+                <figure class={`snap ${i % 2 ? "snap-b" : "snap-a"}`}>
+                  <Image src={shot.img} alt={shot.alt} width={300} densities={[1, 2]} format="webp" loading="lazy" />
+                  <figcaption class="hand">{shot.caption}</figcaption>
+                </figure>
+              ))}
+            </div>
+            <p class="slide-cue hand" aria-hidden="true">
+              slide for more
+              <svg viewBox="0 0 46 18"><path d="M2 9 C14 1.5 29 1.5 41 9 M34 3.5 L41.5 9 L33 13.5" stroke="#E0A23A" stroke-width="2.2" fill="none" stroke-linecap="round" stroke-linejoin="round" /></svg>
+            </p>
+          </section>
+        )
+      }
 
       <p>
         That is the whole of it, at least for today. If it sounds useful, it takes
@@ -529,6 +580,82 @@ const apps = [
         color: var(--hc-ink-soft);
         font-size: 17.5px;
         line-height: 1.5;
+      }
+
+      /* the screenshot strip: prints sliding across the desk */
+      .proof {
+        margin: 6px 0 4px;
+      }
+      .strip {
+        display: flex;
+        gap: 26px;
+        overflow-x: auto;
+        scroll-snap-type: x proximity;
+        /* bleed to the viewport edge so the next print peeks, cut off */
+        margin: 0 calc(50% - 50vw);
+        padding: 16px max(28px, calc(50vw - 302px)) 24px;
+        scrollbar-width: none;
+      }
+      .strip::-webkit-scrollbar {
+        display: none;
+      }
+      .snap {
+        flex: 0 0 auto;
+        width: min(300px, 72vw);
+        margin: 0;
+        position: relative;
+        background: #fff;
+        padding: 9px 9px 0;
+        border: 1px solid var(--hc-paper-edge);
+        box-shadow: var(--shadow-md);
+        scroll-snap-align: start;
+        scroll-margin-left: max(28px, calc(50vw - 302px));
+      }
+      .snap::before {
+        content: "";
+        position: absolute;
+        width: 74px;
+        height: 24px;
+        background: rgba(224, 162, 58, 0.32);
+        top: -11px;
+        left: 50%;
+        transform: translateX(-50%) rotate(-3deg);
+      }
+      .snap-a {
+        transform: rotate(-1.4deg);
+      }
+      .snap-b {
+        transform: rotate(1.2deg);
+      }
+      .snap-b::before {
+        transform: translateX(-50%) rotate(4deg);
+      }
+      .snap img {
+        width: 100%;
+        height: auto;
+        display: block;
+        border-radius: 3px;
+      }
+      .snap figcaption {
+        font-size: 19px;
+        font-weight: 600;
+        color: var(--hc-seed);
+        text-align: center;
+        line-height: 1.15;
+        padding: 8px 4px 10px;
+      }
+      .slide-cue {
+        font-size: 22px;
+        color: var(--hc-seed);
+        text-align: right;
+        transform: rotate(-1.5deg);
+        margin: -6px 0 30px;
+      }
+      .slide-cue svg {
+        width: 40px;
+        height: 16px;
+        vertical-align: -2px;
+        margin-left: 6px;
       }
 
       /* the taped download slip */
