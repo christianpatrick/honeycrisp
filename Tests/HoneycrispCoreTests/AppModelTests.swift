@@ -171,6 +171,21 @@ struct AppModelTests {
         #expect(HoneycrispConfig.load(from: configURL).onboardingCompleted)
     }
 
+    @Test("the automatic update preference persists across model instances")
+    func automaticUpdateChecksFlag() {
+        let configURL = tempStoreURL("config.json")
+        let model = AppModel(
+            configURL: configURL,
+            auditURL: tempStoreURL("audit.jsonl"),
+            executor: CapturingExecutor(),
+            presenter: RecordingPresenter(),
+            portOverride: 0
+        )
+        #expect(model.config.automaticUpdateChecks == true)
+        model.updateAutomaticUpdateChecks(false)
+        #expect(HoneycrispConfig.load(from: configURL).automaticUpdateChecks == false)
+    }
+
     @Test("refresh pulls counts, entries, and connected clients")
     func refresh() async throws {
         let model = makeModel()

@@ -6,6 +6,7 @@ import SwiftUI
 @main
 struct HoneycrispApp: App {
     @State private var model: AppModel
+    @StateObject private var updater: UpdaterModel
     private let presenter: NotificationApprovalPresenter
 
     init() {
@@ -15,6 +16,8 @@ struct HoneycrispApp: App {
         presenter.activate()
         self.presenter = presenter
         _model = State(initialValue: model)
+        _updater = StateObject(
+            wrappedValue: UpdaterModel(automaticallyChecks: model.config.automaticUpdateChecks))
         Task { @MainActor [model] in
             await model.start()
         }
@@ -24,6 +27,7 @@ struct HoneycrispApp: App {
         MenuBarExtra {
             PanelView()
                 .environment(model)
+                .environmentObject(updater)
         } label: {
             if let glyph = BundledArt.menuBarGlyph() {
                 Image(nsImage: glyph)
@@ -43,6 +47,7 @@ struct HoneycrispApp: App {
         Settings {
             SettingsView()
                 .environment(model)
+                .environmentObject(updater)
         }
     }
 }

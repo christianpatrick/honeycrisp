@@ -113,7 +113,7 @@ Most tools like this drive your apps with AppleScript, spinning up a process and
 
 > **Everything stays on your Mac.** Nothing is uploaded, ever. The only record Honeycrisp keeps is the activity list you can open from the menu bar, it lives on your Mac, and you can clear it whenever you like.
 
-There is no account, no cloud, and no telemetry. If your Mac is offline, Honeycrisp still works, because the only machine involved is the one in front of you.
+There is no account, no cloud, and no telemetry. The only thing Honeycrisp reaches out for is its own updates: it checks a version file so it can tell you when a new release is ready, it sends nothing about you, and you can switch it off in Settings. Everything else works with your Mac offline, because the only machine involved is the one in front of you.
 
 ## Why I built this
 

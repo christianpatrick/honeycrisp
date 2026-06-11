@@ -65,3 +65,4 @@ Checkable statements that make this task done.
 | HC-031 | Tag-derived version | done |
 | HC-032 | Notarized Developer ID packaging | done |
 | HC-033 | semantic-release pipeline | done |
+| HC-034 | Sparkle in-app updater | done |

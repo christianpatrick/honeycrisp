@@ -27,10 +27,12 @@ struct WindowConfigurator: NSViewRepresentable {
 /// token, and the activity list's retention.
 struct SettingsView: View {
     @Environment(AppModel.self) private var model
+    @EnvironmentObject private var updater: UpdaterModel
     @State private var launchAtLogin = SMAppService.mainApp.status == .enabled
     @State private var portText = ""
     @State private var tokenText = ""
     @State private var retention = 2000
+    @State private var autoUpdates = true
 
     var body: some View {
         Form {
@@ -81,6 +83,17 @@ struct SettingsView: View {
                 }
             }
 
+            Section("Updates") {
+                Toggle("Check for updates automatically", isOn: $autoUpdates)
+                    .onChange(of: autoUpdates) { _, enabled in
+                        model.updateAutomaticUpdateChecks(enabled)
+                        updater.setAutomaticChecks(enabled)
+                    }
+                Button("Check for Updates Now") {
+                    updater.checkForUpdates()
+                }
+            }
+
             Section {
                 Button("Open the config folder") {
                     NSWorkspace.shared.open(HoneycrispConfig.supportDirectoryURL)
@@ -103,6 +116,7 @@ struct SettingsView: View {
             portText = String(model.config.port)
             tokenText = model.config.bearerToken ?? ""
             retention = model.config.auditMaxEntries
+            autoUpdates = model.config.automaticUpdateChecks
         }
     }
 }

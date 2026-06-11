@@ -203,6 +203,12 @@ public final class AppModel {
         persist()
     }
 
+    public func updateAutomaticUpdateChecks(_ enabled: Bool) {
+        guard enabled != config.automaticUpdateChecks else { return }
+        config.automaticUpdateChecks = enabled
+        persist()
+    }
+
     public func clearActivity() async {
         try? await audit.clear()
         await refresh()

@@ -177,10 +177,43 @@ let plist: [String: Any] = [
     "NSAppleEventsUsageDescription":
         "Honeycrisp drives Mail and Messages only to save a Mail draft, mark messages read, and send what you approve. Nothing leaves your Mac without you.",
     "NSHumanReadableCopyright": "MIT licensed. Made with care by Christian.",
+    // Sparkle in-app updates. The feed is the latest release's appcast; the
+    // public key verifies update signatures (the private key stays in CI).
+    "SUFeedURL": "https://github.com/christianpatrick/honeycrisp/releases/latest/download/appcast.xml",
+    "SUPublicEDKey": "dPED5ZqzSxXxJYYub5ICxU7SwvZsEfx1Fp1sP9V5AbI=",
+    "SUEnableAutomaticChecks": true,
 ]
 let plistData = try PropertyListSerialization.data(
     fromPropertyList: plist, format: .xml, options: 0)
 try plistData.write(to: contents.appendingPathComponent("Info.plist"))
+
+// 6b. Bundle Sparkle.framework (the app links it via @rpath) and point the
+// app's rpath at Contents/Frameworks. install_name_tool must run before
+// signing; signing is the last step, so the order holds.
+print("bundling Sparkle.framework...")
+let frameworks = contents.appendingPathComponent("Frameworks")
+try fileManager.createDirectory(at: frameworks, withIntermediateDirectories: true)
+func findSparkleFramework() -> URL? {
+    let preferred = root.appendingPathComponent(
+        ".build/artifacts/sparkle/Sparkle/Sparkle.xcframework/macos-arm64_x86_64/Sparkle.framework")
+    if fileManager.fileExists(atPath: preferred.path) { return preferred }
+    if let line = capture(
+        "/usr/bin/find",
+        [".build/artifacts", "-path", "*Sparkle.xcframework/macos*/Sparkle.framework", "-type", "d"]
+    )?.split(separator: "\n").first {
+        return root.appendingPathComponent(String(line))
+    }
+    return nil
+}
+guard let sparkleSource = findSparkleFramework() else {
+    fail("Sparkle.framework not found under .build; run swift build first")
+}
+let sparkleFramework = frameworks.appendingPathComponent("Sparkle.framework")
+try? fileManager.removeItem(at: sparkleFramework)
+try run("/usr/bin/ditto", [sparkleSource.path, sparkleFramework.path])
+try run(
+    "/usr/bin/install_name_tool",
+    ["-add_rpath", "@executable_path/../Frameworks", macOS.appendingPathComponent("Honeycrisp").path])
 
 // 7. Sign. Ad-hoc signatures change every build, and macOS binds grants
 // like Full Disk Access to the signature, so ad-hoc rebuilds orphan them.
@@ -256,14 +289,20 @@ let isDeveloperID = identity.contains("Developer ID")
 print(identity == "-" ? "signing ad-hoc..." : "signing with \(identity)...")
 
 if isDeveloperID {
-    // Distribution build: hardened runtime, a secure timestamp, and the
-    // Apple Events entitlement. Sign the nested CLI first and the bundle
-    // last; notarization rejects the --deep shortcut.
+    // Distribution build: hardened runtime and a secure timestamp throughout.
+    // Sign deepest first (Sparkle's nested code, then its framework, then the
+    // helper CLI), and the bundle last; notarization rejects the --deep
+    // shortcut. Only Honeycrisp itself carries the Apple Events entitlement.
     let entitlements = root.appendingPathComponent("scripts/Honeycrisp.entitlements")
     guard fileManager.fileExists(atPath: entitlements.path) else {
         fail("missing entitlements: scripts/Honeycrisp.entitlements")
     }
-    func sign(_ target: String) throws {
+    func signRuntime(_ target: String) throws {
+        try run(
+            "/usr/bin/codesign",
+            ["--force", "--options", "runtime", "--timestamp", "--sign", identity, target])
+    }
+    func signEntitled(_ target: String) throws {
         try run(
             "/usr/bin/codesign",
             [
@@ -271,12 +310,21 @@ if isDeveloperID {
                 "--entitlements", entitlements.path, "--sign", identity, target,
             ])
     }
-    try sign(macOS.appendingPathComponent("honeycrisp-cli").path)
-    try sign(app.path)
+    for kind in ["*.xpc", "*.app"] {
+        if let out = capture("/usr/bin/find", [sparkleFramework.path, "-name", kind, "-depth"]) {
+            for line in out.split(separator: "\n") { try signRuntime(String(line)) }
+        }
+    }
+    let autoupdate = sparkleFramework.appendingPathComponent("Versions/B/Autoupdate")
+    if fileManager.fileExists(atPath: autoupdate.path) { try signRuntime(autoupdate.path) }
+    try signRuntime(sparkleFramework.path)
+    try signEntitled(macOS.appendingPathComponent("honeycrisp-cli").path)
+    try signEntitled(app.path)
     notarizeAndStaple()
 } else {
-    // Local build: keep the simple, FDA-stable Apple Development (or ad-hoc)
-    // sign unchanged.
+    // Local build: the simple, FDA-stable Apple Development (or ad-hoc) sign.
+    // --deep reaches Sparkle's nested code, which is fine off the notarized
+    // path.
     try run("/usr/bin/codesign", ["--force", "--deep", "--sign", identity, app.path])
 }
 
