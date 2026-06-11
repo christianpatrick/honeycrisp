@@ -88,6 +88,6 @@ struct PermissionEngineTests {
     func visibleActions() {
         let config = HoneycrispConfig.default
         #expect(config.visibleActions(for: .mail).map(\.id) == ["search", "read", "draft"])
-        #expect(config.visibleActions(for: .messages).map(\.id) == ["recent", "search"])
+        #expect(config.visibleActions(for: .messages).map(\.id) == ["recent", "search", "history"])
     }
 }

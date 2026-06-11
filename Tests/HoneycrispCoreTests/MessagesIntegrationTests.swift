@@ -11,7 +11,7 @@ struct MessagesIntegrationTests {
     @Test("recent returns plausible conversations from the real database")
     func recent() async throws {
         let database = ChatDatabase()
-        let conversations = try await database.recentConversations(limit: 5)
+        let conversations = try await database.recentConversations(limit: 5, since: nil, unreadOnly: false)
         #expect(!conversations.isEmpty)
         for conversation in conversations {
             #expect(!conversation.id.isEmpty)
@@ -23,6 +23,6 @@ struct MessagesIntegrationTests {
     @Test("search runs against the real database without error")
     func search() async throws {
         let database = ChatDatabase()
-        _ = try await database.searchMessages(query: "the", contact: nil, limit: 5)
+        _ = try await database.searchMessages(query: "the", contact: nil, since: nil, until: nil, limit: 5)
     }
 }

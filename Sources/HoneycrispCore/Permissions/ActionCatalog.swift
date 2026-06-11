@@ -63,6 +63,7 @@ public enum ActionCatalog {
         ActionDescriptor(app: .calendar, id: "create", label: "Create an event", kind: .write, defaultOn: false, requiresApproval: false),
         ActionDescriptor(app: .messages, id: "recent", label: "Read recent messages", kind: .read, defaultOn: true, requiresApproval: false),
         ActionDescriptor(app: .messages, id: "search", label: "Search conversations", kind: .read, defaultOn: true, requiresApproval: false),
+        ActionDescriptor(app: .messages, id: "history", label: "Read a conversation", kind: .read, defaultOn: true, requiresApproval: false),
         ActionDescriptor(app: .messages, id: "send", label: "Send a message", kind: .write, defaultOn: false, requiresApproval: true),
         ActionDescriptor(app: .messages, id: "mark_read", label: "Mark a conversation read", kind: .write, defaultOn: false, requiresApproval: false),
         ActionDescriptor(app: .contacts, id: "lookup", label: "Look up a contact", kind: .read, defaultOn: true, requiresApproval: false),

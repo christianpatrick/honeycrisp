@@ -4,27 +4,38 @@ import Testing
 import HoneycrispCore
 
 private actor FakeMessagesService: MessagesServicing {
-    private(set) var recentLimits: [Int] = []
-    private(set) var searches: [(query: String, contact: String?, limit: Int)] = []
+    private(set) var recents: [(limit: Int, since: Date?, unreadOnly: Bool)] = []
+    private(set) var searches:
+        [(query: String?, contact: String?, since: Date?, until: Date?, limit: Int)] = []
+    private(set) var histories: [(conversation: String, since: Date?, limit: Int)] = []
     private(set) var sends: [(recipient: String, body: String)] = []
     private(set) var marked: [String] = []
 
     var recentResult: [Conversation] = []
     var searchResult: [MessageHit] = []
+    var historyResult: [MessageHit] = []
     var markResult = MarkReadResult(markedRead: true, confirmed: true)
 
     func setRecentResult(_ conversations: [Conversation]) { recentResult = conversations }
     func setSearchResult(_ hits: [MessageHit]) { searchResult = hits }
+    func setHistoryResult(_ hits: [MessageHit]) { historyResult = hits }
     func setMarkResult(_ result: MarkReadResult) { markResult = result }
 
-    func recent(limit: Int) async throws -> [Conversation] {
-        recentLimits.append(limit)
+    func recent(limit: Int, since: Date?, unreadOnly: Bool) async throws -> [Conversation] {
+        recents.append((limit, since, unreadOnly))
         return recentResult
     }
 
-    func search(query: String, contact: String?, limit: Int) async throws -> [MessageHit] {
-        searches.append((query, contact, limit))
+    func search(query: String?, contact: String?, since: Date?, until: Date?, limit: Int)
+        async throws -> [MessageHit]
+    {
+        searches.append((query, contact, since, until, limit))
         return searchResult
+    }
+
+    func history(conversation: String, since: Date?, limit: Int) async throws -> [MessageHit] {
+        histories.append((conversation, since, limit))
+        return historyResult
     }
 
     func send(recipient: String, body: String) async throws -> SendReceipt {
@@ -51,20 +62,31 @@ private let mayaChat = Conversation(
 
 @Suite("Messages tools")
 struct MessagesToolsTests {
-    @Test("recent applies the default limit and round-trips JSON")
+    @Test("recent applies the default limit and passes the new filters")
     func recent() async throws {
         let service = FakeMessagesService()
         await service.setRecentResult([mayaChat])
         let tools = MessagesTools(service: service)
         let outcome = try await tools.execute(action: "recent", arguments: [:], defaultLimit: 12)
-        #expect(await service.recentLimits == [12])
+        let calls = await service.recents
+        #expect(calls.first?.limit == 12)
+        #expect(calls.first?.since == nil)
+        #expect(calls.first?.unreadOnly == false)
         let decoded = try ToolJSON.decode([Conversation].self, from: outcome.content)
         #expect(decoded == [mayaChat])
         #expect(outcome.auditAction == "Read recent messages")
         #expect(outcome.auditSummary.contains("Nothing was modified"))
+
+        _ = try await tools.execute(
+            action: "recent",
+            arguments: ["unread_only": true, "since": "2026-06-09T00:00:00"],
+            defaultLimit: 12)
+        let filtered = await service.recents.last
+        #expect(filtered?.unreadOnly == true)
+        #expect(filtered?.since != nil)
     }
 
-    @Test("search requires a query and passes the contact filter")
+    @Test("search is filters-first: any one of query, contact, or a time bound works")
     func search() async throws {
         let service = FakeMessagesService()
         await service.setSearchResult([
@@ -81,14 +103,53 @@ struct MessagesToolsTests {
             arguments: ["query": "lunch", "contact": "Studio", "limit": 5],
             defaultLimit: 20)
         let calls = await service.searches
-        #expect(calls.count == 1)
         #expect(calls.first?.query == "lunch")
         #expect(calls.first?.contact == "Studio")
         #expect(calls.first?.limit == 5)
         #expect(outcome.auditAction.contains("lunch"))
 
+        _ = try await tools.execute(
+            action: "search",
+            arguments: ["contact": "Maya", "since": "2026-06-08T00:00:00"],
+            defaultLimit: 20)
+        let filterOnly = await service.searches.last
+        #expect(filterOnly?.query == nil)
+        #expect(filterOnly?.since != nil)
+
         await #expect(throws: ToolFailure.self) {
             _ = try await tools.execute(action: "search", arguments: [:], defaultLimit: 20)
+        }
+        await #expect(throws: ToolFailure.self) {
+            _ = try await tools.execute(
+                action: "search", arguments: ["since": "whenever"], defaultLimit: 20)
+        }
+    }
+
+    @Test("history requires a conversation and reads as a transcript")
+    func history() async throws {
+        let service = FakeMessagesService()
+        await service.setHistoryResult([
+            MessageHit(
+                conversation: "+15551234567",
+                conversationId: "iMessage;-;+15551234567",
+                sender: "+15551234567",
+                text: "running 10 min late",
+                at: Date(timeIntervalSinceReferenceDate: 800_000_000))
+        ])
+        let tools = MessagesTools(service: service)
+        let outcome = try await tools.execute(
+            action: "history",
+            arguments: ["conversation": "Maya", "since": "2026-06-08T00:00:00", "limit": 50],
+            defaultLimit: 20)
+        let calls = await service.histories
+        #expect(calls.first?.conversation == "Maya")
+        #expect(calls.first?.since != nil)
+        #expect(calls.first?.limit == 50)
+        #expect(outcome.auditAction.contains("Maya"))
+        #expect(outcome.auditSummary.contains("Nothing was modified"))
+
+        await #expect(throws: ToolFailure.self) {
+            _ = try await tools.execute(action: "history", arguments: [:], defaultLimit: 20)
         }
     }
 

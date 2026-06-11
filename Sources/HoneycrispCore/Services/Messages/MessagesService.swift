@@ -86,16 +86,21 @@ public struct ChatTarget: Sendable, Equatable {
 
 /// The Messages domain seam the translator talks to.
 public protocol MessagesServicing: Sendable {
-    func recent(limit: Int) async throws -> [Conversation]
-    func search(query: String, contact: String?, limit: Int) async throws -> [MessageHit]
+    func recent(limit: Int, since: Date?, unreadOnly: Bool) async throws -> [Conversation]
+    func search(query: String?, contact: String?, since: Date?, until: Date?, limit: Int)
+        async throws -> [MessageHit]
+    func history(conversation: String, since: Date?, limit: Int) async throws -> [MessageHit]
     func send(recipient: String, body: String) async throws -> SendReceipt
     func markRead(conversation: String) async throws -> MarkReadResult
 }
 
 /// Sub-seams, one per access mechanism, so each is fakeable on its own.
 public protocol ChatDatabaseReading: Sendable {
-    func recentConversations(limit: Int) async throws -> [Conversation]
-    func searchMessages(query: String, contact: String?, limit: Int) async throws -> [MessageHit]
+    func recentConversations(limit: Int, since: Date?, unreadOnly: Bool) async throws
+        -> [Conversation]
+    func searchMessages(query: String?, contact: String?, since: Date?, until: Date?, limit: Int)
+        async throws -> [MessageHit]
+    func history(conversation: String, since: Date?, limit: Int) async throws -> [MessageHit]
     func conversationTarget(matching query: String) async throws -> ChatTarget?
     func unreadCount(chatGUID: String) async throws -> Int
 }
@@ -135,12 +140,22 @@ public struct MessagesService: MessagesServicing {
         )
     }
 
-    public func recent(limit: Int) async throws -> [Conversation] {
-        try await reader.recentConversations(limit: limit)
+    public func recent(limit: Int, since: Date?, unreadOnly: Bool) async throws -> [Conversation]
+    {
+        try await reader.recentConversations(limit: limit, since: since, unreadOnly: unreadOnly)
     }
 
-    public func search(query: String, contact: String?, limit: Int) async throws -> [MessageHit] {
-        try await reader.searchMessages(query: query, contact: contact, limit: limit)
+    public func search(query: String?, contact: String?, since: Date?, until: Date?, limit: Int)
+        async throws -> [MessageHit]
+    {
+        try await reader.searchMessages(
+            query: query, contact: contact, since: since, until: until, limit: limit)
+    }
+
+    public func history(conversation: String, since: Date?, limit: Int) async throws
+        -> [MessageHit]
+    {
+        try await reader.history(conversation: conversation, since: since, limit: limit)
     }
 
     public func send(recipient: String, body: String) async throws -> SendReceipt {

@@ -202,17 +202,34 @@ public enum ToolRegistry {
             schema: schema(
                 properties: [
                     "limit": prop("integer", "The most conversations to return."),
+                    "since": prop(
+                        "string", "Only conversations active on or after this ISO 8601 time."),
+                    "unread_only": prop("boolean", "Only conversations with unread messages."),
                 ])
         ),
         "messages_search": Definition(
-            description: "Search Messages content, optionally narrowed to one contact.",
+            description:
+                "Search Messages. Filters compose: a keyword, a contact, and a time window all work alone or together; give at least one.",
             schema: schema(
                 properties: [
                     "query": prop("string", "Words to look for in message text."),
                     "contact": prop("string", "Only conversations with this contact."),
+                    "since": prop("string", "Only messages on or after this ISO 8601 time."),
+                    "until": prop("string", "Only messages before this ISO 8601 time."),
                     "limit": prop("integer", "The most matches to return."),
+                ])
+        ),
+        "messages_history": Definition(
+            description:
+                "Read the transcript of one conversation, oldest first: the full back and forth with a person or group.",
+            schema: schema(
+                properties: [
+                    "conversation": prop(
+                        "string", "The conversation: a contact name, phone number, or email."),
+                    "since": prop("string", "Only messages on or after this ISO 8601 time."),
+                    "limit": prop("integer", "The most recent N messages within the window."),
                 ],
-                required: ["query"])
+                required: ["conversation"])
         ),
         "messages_send": Definition(
             description:
@@ -322,4 +339,16 @@ func int(_ value: Value?) -> Int? {
 func bool(_ value: Value?) -> Bool? {
     if case .bool(let result)? = value { return result }
     return nil
+}
+
+/// Parses an optional ISO 8601 date argument, failing with one consistent
+/// sentence when present but unparseable.
+func dateArg(_ arguments: [String: Value], _ key: String) throws -> Date? {
+    guard let raw = string(arguments[key]) else { return nil }
+    guard let date = ToolDates.parseISO(raw) else {
+        throw ToolFailure(
+            "The \(key) \u{201C}\(raw)\u{201D} did not parse. Send ISO 8601, like 2026-06-12T09:00:00."
+        )
+    }
+    return date
 }

@@ -22,11 +22,13 @@ public actor ChatDatabase: ChatDatabaseReading {
 
     // MARK: - Reads
 
-    public func recentConversations(limit: Int) async throws -> [Conversation] {
+    public func recentConversations(limit: Int, since: Date?, unreadOnly: Bool) async throws
+        -> [Conversation]
+    {
         let db = try open()
         // The newest real message per chat; reactions and system rows are
         // not messages.
-        let sql = """
+        var sql = """
             SELECT c.ROWID, c.guid, c.chat_identifier, c.display_name, c.style,
                    m.text, m.attributedBody, m.is_from_me, m.date
             FROM chat c
@@ -40,6 +42,22 @@ public actor ChatDatabase: ChatDatabaseReading {
             JOIN chat_message_join cmj2 ON cmj2.chat_id = c.ROWID
             JOIN message m ON m.ROWID = cmj2.message_id AND m.date = latest.last_date
             WHERE m.item_type = 0 AND m.associated_message_type = 0
+            """
+        if since != nil {
+            sql += " AND latest.last_date >= ?2"
+        }
+        if unreadOnly {
+            sql += """
+                 AND EXISTS (
+                    SELECT 1 FROM chat_message_join u
+                    JOIN message um ON um.ROWID = u.message_id
+                    WHERE u.chat_id = c.ROWID AND um.is_read = 0 AND um.is_from_me = 0
+                      AND um.item_type = 0 AND um.associated_message_type = 0
+                )
+                """
+        }
+        sql += """
+
             GROUP BY c.ROWID
             ORDER BY latest.last_date DESC
             LIMIT ?1
@@ -47,6 +65,9 @@ public actor ChatDatabase: ChatDatabaseReading {
         var conversations: [Conversation] = []
         try query(db, sql, bind: { statement in
             sqlite3_bind_int(statement, 1, Int32(max(0, limit)))
+            if let since {
+                sqlite3_bind_int64(statement, 2, Self.appleNanoseconds(since))
+            }
         }) { statement in
             let chatRow = sqlite3_column_int64(statement, 0)
             let guid = column(statement, 1) ?? ""
@@ -82,54 +103,126 @@ public actor ChatDatabase: ChatDatabaseReading {
         return conversations
     }
 
-    public func searchMessages(query text: String, contact: String?, limit: Int) async throws
-        -> [MessageHit]
-    {
+    public func searchMessages(
+        query text: String?, contact: String?, since: Date?, until: Date?, limit: Int
+    ) async throws -> [MessageHit] {
         let db = try open()
-        let sql = """
-            SELECT m.text, m.is_from_me, m.date, h.id,
+        var sql = """
+            SELECT m.text, m.attributedBody, m.is_from_me, m.date, h.id,
                    c.guid, c.chat_identifier, c.display_name, c.style
             FROM message m
             JOIN chat_message_join cmj ON cmj.message_id = m.ROWID
             JOIN chat c ON c.ROWID = cmj.chat_id
             LEFT JOIN handle h ON h.ROWID = m.handle_id
             WHERE m.item_type = 0 AND m.associated_message_type = 0
-              AND m.text LIKE '%' || ?1 || '%'
+            """
+        if text != nil {
+            sql += " AND m.text LIKE '%' || ?1 || '%'"
+        }
+        sql += """
+
               AND (?2 IS NULL
                    OR c.chat_identifier LIKE '%' || ?2 || '%'
                    OR c.display_name LIKE '%' || ?2 || '%'
                    OR h.id LIKE '%' || ?2 || '%')
+            """
+        if since != nil {
+            sql += " AND m.date >= ?4"
+        }
+        if until != nil {
+            sql += " AND m.date < ?5"
+        }
+        sql += """
+
             ORDER BY m.date DESC
             LIMIT ?3
             """
         var hits: [MessageHit] = []
         try query(db, sql, bind: { statement in
-            bindText(statement, 1, text)
+            if let text {
+                bindText(statement, 1, text)
+            }
             if let contact {
                 bindText(statement, 2, contact)
             } else {
                 sqlite3_bind_null(statement, 2)
             }
             sqlite3_bind_int(statement, 3, Int32(max(0, limit)))
+            if let since {
+                sqlite3_bind_int64(statement, 4, Self.appleNanoseconds(since))
+            }
+            if let until {
+                sqlite3_bind_int64(statement, 5, Self.appleNanoseconds(until))
+            }
         }) { statement in
-            let body = column(statement, 0) ?? ""
-            let fromMe = sqlite3_column_int(statement, 1) == 1
-            let date = appleDate(sqlite3_column_int64(statement, 2))
-            let sender = column(statement, 3)
-            let guid = column(statement, 4) ?? ""
-            let identifier = column(statement, 5) ?? ""
-            let displayName = column(statement, 6)
-            hits.append(
-                MessageHit(
-                    conversation: (displayName?.isEmpty == false ? displayName! : nil)
-                        ?? sender ?? identifier,
-                    conversationId: guid,
-                    sender: fromMe ? "me" : (sender ?? identifier),
-                    text: body,
-                    at: date
-                ))
+            hits.append(Self.hitRow(statement))
         }
         return hits
+    }
+
+    public func history(conversation: String, since: Date?, limit: Int) async throws
+        -> [MessageHit]
+    {
+        guard let target = try await conversationTarget(matching: conversation) else {
+            throw ToolFailure(
+                "No Messages conversation matched \u{201C}\(conversation)\u{201D}.")
+        }
+        let db = try open()
+        var sql = """
+            SELECT m.text, m.attributedBody, m.is_from_me, m.date, h.id,
+                   c.guid, c.chat_identifier, c.display_name, c.style
+            FROM message m
+            JOIN chat_message_join cmj ON cmj.message_id = m.ROWID
+            JOIN chat c ON c.ROWID = cmj.chat_id
+            LEFT JOIN handle h ON h.ROWID = m.handle_id
+            WHERE c.guid = ?1 AND m.item_type = 0 AND m.associated_message_type = 0
+            """
+        if since != nil {
+            sql += " AND m.date >= ?3"
+        }
+        // Newest N within the window, then flipped to transcript order.
+        sql += """
+
+            ORDER BY m.date DESC
+            LIMIT ?2
+            """
+        var hits: [MessageHit] = []
+        try query(db, sql, bind: { statement in
+            bindText(statement, 1, target.guid)
+            sqlite3_bind_int(statement, 2, Int32(max(0, limit)))
+            if let since {
+                sqlite3_bind_int64(statement, 3, Self.appleNanoseconds(since))
+            }
+        }) { statement in
+            hits.append(Self.hitRow(statement))
+        }
+        return hits.reversed()
+    }
+
+    private static func hitRow(_ statement: OpaquePointer) -> MessageHit {
+        let body = Self.messageText(
+            text: column(statement, 0), body: blobColumn(statement, 1))
+        let fromMe = sqlite3_column_int(statement, 2) == 1
+        let date = Date(
+            timeIntervalSinceReferenceDate: Double(sqlite3_column_int64(statement, 3))
+                / 1_000_000_000)
+        let sender = column(statement, 4)
+        let guid = column(statement, 5) ?? ""
+        let identifier = column(statement, 6) ?? ""
+        let displayName = column(statement, 7)
+        return MessageHit(
+            conversation: (displayName?.isEmpty == false ? displayName! : nil)
+                ?? sender ?? identifier,
+            conversationId: guid,
+            sender: fromMe ? "me" : (sender ?? identifier),
+            text: body,
+            at: date
+        )
+    }
+
+    /// chat.db speaks nanoseconds since 2001-01-01.
+    private static func appleNanoseconds(_ date: Date) -> Int64 {
+        Int64(date.timeIntervalSinceReferenceDate * 1_000_000_000)
     }
 
     public func conversationTarget(matching needle: String) async throws -> ChatTarget? {

@@ -79,7 +79,7 @@ struct ChatDatabaseTests {
     @Test("recent orders by last message with previews, unread counts, and names")
     func recent() async throws {
         let database = ChatDatabase(path: try makeFixture().path)
-        let conversations = try await database.recentConversations(limit: 10)
+        let conversations = try await database.recentConversations(limit: 10, since: nil, unreadOnly: false)
         #expect(conversations.count == 2)
 
         let studio = try #require(conversations.first)
@@ -104,30 +104,30 @@ struct ChatDatabaseTests {
     @Test("a reaction row never becomes a preview")
     func reactionsExcluded() async throws {
         let database = ChatDatabase(path: try makeFixture().path)
-        let conversations = try await database.recentConversations(limit: 10)
+        let conversations = try await database.recentConversations(limit: 10, since: nil, unreadOnly: false)
         #expect(conversations.allSatisfy { !$0.lastMessage.contains("Loved") })
     }
 
     @Test("search matches text, maps senders, and converts Apple epoch dates")
     func search() async throws {
         let database = ChatDatabase(path: try makeFixture().path)
-        let hits = try await database.searchMessages(query: "lunch", contact: nil, limit: 10)
+        let hits = try await database.searchMessages(query: "lunch", contact: nil, since: nil, until: nil, limit: 10)
         #expect(hits.count == 1)
         #expect(hits.first?.sender == "alex@studio.com")
         #expect(hits.first?.conversation == "Studio friends")
         #expect(hits.first?.at == Date(timeIntervalSinceReferenceDate: 800_000_200))
 
-        let mine = try await database.searchMessages(query: "ok", contact: nil, limit: 10)
+        let mine = try await database.searchMessages(query: "ok", contact: nil, since: nil, until: nil, limit: 10)
         #expect(mine.first?.sender == "me")
     }
 
     @Test("the contact filter narrows search to one conversation")
     func searchContactFilter() async throws {
         let database = ChatDatabase(path: try makeFixture().path)
-        let all = try await database.searchMessages(query: "l", contact: nil, limit: 10)
+        let all = try await database.searchMessages(query: "l", contact: nil, since: nil, until: nil, limit: 10)
         #expect(all.count >= 2)
         let filtered = try await database.searchMessages(
-            query: "l", contact: "+1555123", limit: 10)
+            query: "l", contact: "+1555123", since: nil, until: nil, limit: 10)
         #expect(filtered.allSatisfy { $0.conversationId == "iMessage;-;+15551234567" })
         #expect(!filtered.isEmpty)
     }
@@ -155,11 +155,66 @@ struct ChatDatabaseTests {
         #expect(try await database.unreadCount(chatGUID: "iMessage;+;chat123") == 0)
     }
 
+    @Test("history returns one conversation's transcript, oldest first")
+    func history() async throws {
+        let database = ChatDatabase(path: try makeFixture().path)
+        let transcript = try await database.history(
+            conversation: "+15551234567", since: nil, limit: 10)
+        #expect(transcript.map(\.text) == ["running 10 min late", "ok!"])
+        #expect(transcript.first?.sender == "+15551234567")
+        #expect(transcript.last?.sender == "me")
+    }
+
+    @Test("history respects since and keeps the newest within the limit")
+    func historyWindow() async throws {
+        let database = ChatDatabase(path: try makeFixture().path)
+        let since = Date(timeIntervalSinceReferenceDate: 800_000_050)
+        let recent = try await database.history(
+            conversation: "+15551234567", since: since, limit: 10)
+        #expect(recent.map(\.text) == ["ok!"])
+
+        let limited = try await database.history(
+            conversation: "+15551234567", since: nil, limit: 1)
+        #expect(limited.map(\.text) == ["ok!"])
+    }
+
+    @Test("search works filters-first: contact only, no keyword")
+    func searchWithoutKeyword() async throws {
+        let database = ChatDatabase(path: try makeFixture().path)
+        let hits = try await database.searchMessages(
+            query: nil, contact: "+1555123", since: nil, until: nil, limit: 10)
+        #expect(hits.count == 2)
+        #expect(hits.allSatisfy { $0.conversationId == "iMessage;-;+15551234567" })
+    }
+
+    @Test("search time bounds narrow the window")
+    func searchTimeBounds() async throws {
+        let database = ChatDatabase(path: try makeFixture().path)
+        let since = Date(timeIntervalSinceReferenceDate: 800_000_150)
+        let until = Date(timeIntervalSinceReferenceDate: 800_000_300)
+        let hits = try await database.searchMessages(
+            query: nil, contact: nil, since: since, until: until, limit: 10)
+        #expect(hits.map(\.text) == ["lunch friday?"])
+    }
+
+    @Test("recent filters to unread conversations and by since")
+    func recentFilters() async throws {
+        let database = ChatDatabase(path: try makeFixture().path)
+        let unread = try await database.recentConversations(
+            limit: 10, since: nil, unreadOnly: true)
+        #expect(unread.map(\.id) == ["iMessage;-;+15551234567"])
+
+        let since = Date(timeIntervalSinceReferenceDate: 800_000_300)
+        let recent = try await database.recentConversations(
+            limit: 10, since: since, unreadOnly: false)
+        #expect(recent.map(\.id) == ["iMessage;+;chat123"])
+    }
+
     @Test("a missing database fails with the Full Disk Access sentence")
     func missingDatabase() async {
         let database = ChatDatabase(path: "/nonexistent/honeycrisp/chat.db")
         do {
-            _ = try await database.recentConversations(limit: 5)
+            _ = try await database.recentConversations(limit: 5, since: nil, unreadOnly: false)
             Issue.record("expected a ToolFailure")
         } catch let failure as ToolFailure {
             #expect(failure.message.contains("Full Disk Access"))

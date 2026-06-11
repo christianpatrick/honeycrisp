@@ -3,14 +3,23 @@ import HoneycrispCore
 
 @Suite("Action catalog")
 struct ActionCatalogTests {
-    @Test("nineteen actions with the designed per-app counts")
+    @Test("twenty actions with the designed per-app counts")
     func actionCounts() {
-        #expect(ActionCatalog.all.count == 19)
+        #expect(ActionCatalog.all.count == 20)
         #expect(ActionCatalog.actions(for: .mail).count == 5)
         #expect(ActionCatalog.actions(for: .reminders).count == 4)
         #expect(ActionCatalog.actions(for: .calendar).count == 3)
-        #expect(ActionCatalog.actions(for: .messages).count == 4)
+        #expect(ActionCatalog.actions(for: .messages).count == 5)
         #expect(ActionCatalog.actions(for: .contacts).count == 3)
+    }
+
+    @Test("the conversation history action is a default-on read")
+    func messagesHistory() throws {
+        let history = try #require(ActionCatalog.descriptor(app: .messages, action: "history"))
+        #expect(history.label == "Read a conversation")
+        #expect(history.kind == .read)
+        #expect(history.defaultOn)
+        #expect(history.requiresApproval == false)
     }
 
     @Test("exactly the two outbound sends require approval")
