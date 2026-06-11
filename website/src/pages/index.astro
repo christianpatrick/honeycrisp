@@ -61,7 +61,7 @@ const apps = [
     <meta property="og:type" content="website" />
     <meta property="og:site_name" content="Honeycrisp" />
     <meta property="og:title" content="Honeycrisp" />
-    <meta property="og:description" content="Your assistant, finally fluent in your Mac. A fast, private MCP server for Mail, Reminders, Calendar, Messages, and Contacts." />
+    <meta property="og:description" content="Your assistant, fully fluent in your Mac. A fast, private MCP server for Mail, Reminders, Calendar, Messages, and Contacts." />
     <meta property="og:url" content={canonical} />
     <meta property="og:image" content={ogImage} />
     <meta name="twitter:card" content="summary_large_image" />
@@ -73,10 +73,9 @@ const apps = [
           <span class="mark-icon" set:html={honeycrispIcon} />
           <span class="wm">Honeycrisp<span class="red">.</span></span>
         </div>
-        <div class="date hand">made with care<br />by Christian</div>
       </header>
 
-      <h1 class="opening hand">Your assistant, finally<br />fluent in your <span class="red">Mac</span>.</h1>
+      <h1 class="opening hand">Your assistant, fully<br />fluent in your <span class="red">Mac</span>.</h1>
 
       <p class="lead">
         Honeycrisp lets the AI you already use read a mail thread, check what is due
@@ -191,27 +190,34 @@ const apps = [
       <div class="about">
         <figure class="polaroid">
           <img src={portrait.src} width="460" height="460" alt="Christian, the maker of Honeycrisp, smiling" loading="lazy" />
-          <figcaption class="cap hand">that's me</figcaption>
+          <figcaption class="cap hand">Hi, my name's Christian</figcaption>
         </figure>
         <div class="about-text">
           <p>
-            I'm Christian. I love the Apple apps and have built years of little
-            workflows to get the most out of them, so when an AI assistant became
-            part of my every day, I wanted that same power in the apps I know and
-            love.
+            I love using Apple apps personally and have built great workflows over
+            the years to get the most out of them. As agentic workflows became a
+            daily driver professionally, I wanted that same power using the apps I
+            know and love.
           </p>
           <p>
-            I tried the options that already existed, and they let me down. Reading
-            and updating data was slow and would often lock up an app entirely, and
-            I never had a clear view of what those tools could actually see or do on
-            my behalf.
+            After trying several MCP options for Apple, I ran into performance
+            issues: reading and updating data inside apps was slow, and would often
+            lock up an app entirely. Even worse, I had no clear view of what those
+            MCPs could actually see or do on my behalf.
           </p>
           <p>
-            So I built the helper I wanted: fast, private, and transparent. It keeps
-            a local-only log of every action it takes, and it lets me fine-tune
-            permissions with a single click. And I love eating a good Honeycrisp
-            apple. Now my Mac seems to enjoy them too.
+            So Honeycrisp is here to be your fast, private, and transparent helper.
+            It follows the MCP standard, so you can use it with any model you
+            choose. It keeps a local-only log of every action it takes and lets you
+            fine-tune permissions with a single click.
           </p>
+          <p>
+            Just remember that while Honeycrisp doesn't upload your data anywhere,
+            it's only as private as the model provider you choose. For a fully
+            private setup, pair it with a local model running in something like
+            Ollama or LM Studio, so nothing ever leaves your Mac.
+          </p>
+          <p>I love eating a good Honeycrisp apple, and now my Mac seems to enjoy it too. :)</p>
         </div>
       </div>
 
@@ -220,16 +226,11 @@ const apps = [
         P.S. If you want another app supported,
         <a href={`${repo}/issues/new`}>open an issue on GitHub</a>. I am keeping a list.
       </p>
-      <p class="ps">
-        P.P.S. Honeycrisp never uploads your data, but a conversation is only as
-        private as the model on the other end. Pair it with a local model in
-        something like Ollama or LM Studio and nothing ever leaves your Mac.
-      </p>
 
       <footer class="foot">
         <p class="pun hand">
-          Built with <span class="red">apples</span>, not AppleScript, by
-          <a href="https://mynameischristian.com/">Christian</a>.
+          Built with <span class="red">apples</span> by
+          <a href="https://mynameischristian.com/" target="_blank" rel="noopener">Christian</a>.
         </p>
         <p class="legal">
           Honeycrisp is an independent project and is not affiliated with, endorsed
@@ -338,14 +339,6 @@ const apps = [
         font-size: 25px;
         letter-spacing: -0.03em;
         line-height: 1;
-      }
-      .date {
-        font-size: 21px;
-        font-weight: 600;
-        color: var(--hc-ink-soft);
-        text-align: right;
-        white-space: nowrap;
-        transform: rotate(-2deg);
       }
 
       .opening {
@@ -628,10 +621,10 @@ const apps = [
         border-radius: 3px;
       }
       .cap {
-        font-size: 20px;
+        font-size: 16px;
         color: var(--hc-seed);
         text-align: center;
-        line-height: 1.1;
+        line-height: 1.15;
         padding: 8px 2px 9px;
       }
       .about-text {
