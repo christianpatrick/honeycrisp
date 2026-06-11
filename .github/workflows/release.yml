@@ -16,15 +16,15 @@ concurrency:
 jobs:
   release:
     name: Build, notarize, and release
-    runs-on: macos-15
+    runs-on: macos-26
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           fetch-depth: 0
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v6
         with:
-          node-version: 20
+          node-version: lts/*
 
       - name: Import Developer ID certificate
         env:
@@ -60,7 +60,7 @@ jobs:
 
       - name: Fetch Sparkle signing tool
         env:
-          SPARKLE_VERSION: "2.6.4"
+          SPARKLE_VERSION: "2.9.3"
         run: |
           set -euo pipefail
           curl -fsSL -o "$RUNNER_TEMP/sparkle.tar.xz" \
