@@ -36,6 +36,6 @@ Read [AGENTS.md](AGENTS.md) first. The short version:
 
 ## Requesting an app
 
-The most useful contribution is telling me which app you want Honeycrisp to reach next and how you would use it. Open an issue and describe the moment you needed it. The integrations are designed to be added one at a time, so a good description is most of the work.
+The most useful contribution is telling me which app you want Honeycrisp to communicate with next and how you would use it. Open an issue and describe the use-case that the connection solves. The integrations are designed to be added one at a time, so a good description helps me understand how to connect it properly.
 
 Be kind in the issue tracker. I would like this to stay a pleasant corner of the internet.
