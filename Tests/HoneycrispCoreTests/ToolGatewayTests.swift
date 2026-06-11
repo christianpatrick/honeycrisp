@@ -69,14 +69,14 @@ struct ToolGatewayTests {
         )
     }
 
-    @Test("the default config lists exactly the seventeen visible tools")
+    @Test("the default config is read-only and lists exactly the fourteen read tools")
     func defaultListing() {
         let gateway = makeGateway(audit: AuditStore(fileURL: tempAuditURL()))
         let names = Set(gateway.listTools().map(\.name))
         #expect(
             names == [
-                "mail_search", "mail_read", "mail_draft", "mail_mailboxes",
-                "reminders_list", "reminders_due", "reminders_create", "reminders_complete", "reminders_lists",
+                "mail_search", "mail_read", "mail_mailboxes",
+                "reminders_list", "reminders_due", "reminders_lists",
                 "calendar_today", "calendar_list", "calendar_calendars",
                 "messages_recent", "messages_search", "messages_history",
                 "contacts_lookup", "contacts_fields",
@@ -128,7 +128,12 @@ struct ToolGatewayTests {
     func deniedActionOff() async {
         let executor = RecordingExecutor()
         let audit = AuditStore(fileURL: tempAuditURL())
-        let gateway = makeGateway(executor: executor, audit: audit)
+        // Mail is writable but send is switched off, so the block is actionOff
+        // rather than the read-level readOnlyApp.
+        var config = HoneycrispConfig.default
+        config.setLevel(.write, for: .mail)
+        config.setAction("send", on: false, for: .mail)
+        let gateway = makeGateway(config: config, executor: executor, audit: audit)
         let result = await gateway.callTool(name: "mail_send", arguments: ["body": "hi"])
         #expect(result.isError)
         #expect(result.content.contains("turned off"))

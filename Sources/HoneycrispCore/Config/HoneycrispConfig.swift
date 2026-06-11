@@ -38,17 +38,14 @@ public struct HoneycrispConfig: Codable, Equatable, Sendable {
     public var automaticUpdateChecks: Bool
 
     public static let `default`: HoneycrispConfig = {
-        var levels: [AppID: PermissionLevel] = [
-            .mail: .write, .reminders: .write, .calendar: .read,
-            .messages: .read, .contacts: .read,
-        ]
-        var switches: [AppID: [String: Bool]] = [:]
-        for action in ActionCatalog.all {
-            switches[action.app, default: [:]][action.id] = action.defaultOn
-        }
-        return HoneycrispConfig(
-            levels: levels,
-            switches: switches,
+        // Read-only out of the box: the assistant can read every app but
+        // writes nothing until the user raises an app to write in the panel,
+        // and outbound sends still need per-request approval on top. Building
+        // through setLevel keeps levels and switches consistent: reads on,
+        // writes off.
+        var config = HoneycrispConfig(
+            levels: [:],
+            switches: [:],
             port: 41117,
             defaultLimit: 20,
             defaultRemindersList: nil,
@@ -58,6 +55,10 @@ public struct HoneycrispConfig: Codable, Equatable, Sendable {
             onboardingCompleted: false,
             automaticUpdateChecks: true
         )
+        for app in AppID.allCases {
+            config.setLevel(.read, for: app)
+        }
+        return config
     }()
 }
 

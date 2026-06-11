@@ -7,13 +7,15 @@ struct PermissionEngineTests {
     @Test("the default config matches the designed defaults")
     func defaults() {
         let config = HoneycrispConfig.default
+        // Read-only by default: every read is allowed, and every write is
+        // denied at the read level (readOnlyApp) before its switch matters.
         #expect(config.decision(app: .mail, action: "search") == .allowed)
-        #expect(config.decision(app: .mail, action: "send") == .denied(.actionOff))
+        #expect(config.decision(app: .mail, action: "draft") == .denied(.readOnlyApp))
+        #expect(config.decision(app: .mail, action: "send") == .denied(.readOnlyApp))
         #expect(config.decision(app: .messages, action: "recent") == .allowed)
-        // Levels gate before switches, so a write under a read level reports
-        // readOnlyApp even when its switch is also off.
         #expect(config.decision(app: .messages, action: "send") == .denied(.readOnlyApp))
-        #expect(config.decision(app: .reminders, action: "create") == .allowed)
+        #expect(config.decision(app: .reminders, action: "list") == .allowed)
+        #expect(config.decision(app: .reminders, action: "create") == .denied(.readOnlyApp))
         #expect(config.decision(app: .contacts, action: "create") == .denied(.readOnlyApp))
         #expect(config.decision(app: .calendar, action: "today") == .allowed)
         #expect(config.decision(app: .calendar, action: "create") == .denied(.readOnlyApp))
@@ -36,6 +38,8 @@ struct PermissionEngineTests {
     @Test("dropping to read forces write switches off")
     func dropToRead() {
         var config = HoneycrispConfig.default
+        config.setLevel(.write, for: .mail)
+        #expect(config.isOn(app: .mail, action: "draft"))
         config.setLevel(.read, for: .mail)
         #expect(config.isOn(app: .mail, action: "search"))
         #expect(config.isOn(app: .mail, action: "draft") == false)
@@ -87,7 +91,7 @@ struct PermissionEngineTests {
     @Test("listing only surfaces actions that are not denied")
     func visibleActions() {
         let config = HoneycrispConfig.default
-        #expect(config.visibleActions(for: .mail).map(\.id) == ["search", "read", "draft"])
+        #expect(config.visibleActions(for: .mail).map(\.id) == ["search", "read"])
         #expect(config.visibleActions(for: .messages).map(\.id) == ["recent", "search", "history"])
     }
 }

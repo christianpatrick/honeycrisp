@@ -32,17 +32,19 @@ struct CLIParserTests {
 
     @Test("read-only narrows write levels and switches")
     func readOnlyFlag() {
-        let narrowed = applyServeFlags(ServeOptions(readOnly: true), to: .default)
+        var base = HoneycrispConfig.default
+        base.setLevel(.write, for: .mail)
+        let narrowed = applyServeFlags(ServeOptions(readOnly: true), to: base)
         #expect(narrowed.level(for: .mail) == .read)
         #expect(narrowed.isOn(app: .mail, action: "draft") == false)
         #expect(narrowed.isOn(app: .mail, action: "search"))
         #expect(narrowed.level(for: .contacts) == .read)
     }
 
-    @Test("an apps list turns everything else off")
+    @Test("an apps list turns everything else off and keeps the kept app at its default")
     func appsFlag() {
         let narrowed = applyServeFlags(ServeOptions(apps: [.mail]), to: .default)
-        #expect(narrowed.level(for: .mail) == .write)
+        #expect(narrowed.level(for: .mail) == .read)
         #expect(narrowed.level(for: .reminders) == .off)
         #expect(narrowed.level(for: .messages) == .off)
         #expect(narrowed.level(for: .contacts) == .off)

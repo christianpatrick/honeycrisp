@@ -46,7 +46,7 @@ struct ConfigPersistenceTests {
         let config = HoneycrispConfig.load(from: url)
         #expect(config.port == 5)
         #expect(config.defaultLimit == HoneycrispConfig.default.defaultLimit)
-        #expect(config.level(for: .mail) == .write)
+        #expect(config.level(for: .mail) == .read)
         #expect(config.isOn(app: .mail, action: "search"))
     }
 
