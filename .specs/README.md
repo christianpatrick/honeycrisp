@@ -64,3 +64,4 @@ Checkable statements that make this task done.
 | HC-030 | Automatic update checks preference | done |
 | HC-031 | Tag-derived version | done |
 | HC-032 | Notarized Developer ID packaging | done |
+| HC-033 | semantic-release pipeline | done |

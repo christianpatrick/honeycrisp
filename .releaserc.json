@@ -1,0 +1,23 @@
+{
+  "branches": ["main"],
+  "tagFormat": "v${version}",
+  "plugins": [
+    "@semantic-release/commit-analyzer",
+    "@semantic-release/release-notes-generator",
+    [
+      "@semantic-release/exec",
+      {
+        "prepareCmd": "HONEYCRISP_VERSION=${nextRelease.version} swift scripts/package-app.swift && HONEYCRISP_VERSION=${nextRelease.version} swift scripts/make-release.swift"
+      }
+    ],
+    [
+      "@semantic-release/github",
+      {
+        "assets": [
+          { "path": "dist/Honeycrisp-*.zip", "label": "Honeycrisp.app (notarized, macOS 15+)" },
+          { "path": "dist/appcast.xml", "label": "appcast.xml" }
+        ]
+      }
+    ]
+  ]
+}

@@ -5,4 +5,5 @@ xcuserdata/
 DerivedData/
 dist/
 .env
+node_modules/
 
