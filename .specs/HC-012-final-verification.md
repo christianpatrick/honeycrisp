@@ -1,9 +1,5 @@
 # HC-012: Final verification, docs, v0.1.0
 
-- Task number: HC-012 (no GitHub issue yet)
-- Status: done
-- Date: 2026-06-09
-
 ## Why
 
 Everything is built and unit-verified; this task proves the product on this Mac through the packaged app, which is the real TCC identity, then finishes the docs and tags v0.1.0.

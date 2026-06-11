@@ -1,9 +1,5 @@
 # HC-018: Settings opens on the current Space
 
-- Task number: HC-018 (no GitHub issue yet)
-- Status: done
-- Date: 2026-06-09
-
 ## Why
 
 macOS pins a window to the Space it last lived on, so opening Settings from the panel switched the user to that Space instead of presenting the window where they are. A menu bar utility's windows should come to the user.

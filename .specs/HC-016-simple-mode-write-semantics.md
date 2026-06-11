@@ -1,9 +1,5 @@
 # HC-016: Simple mode "Read & write" enables every action
 
-- Task number: HC-016 (no GitHub issue yet)
-- Status: done
-- Date: 2026-06-09
-
 ## Why
 
 Christian set every app to Read & write in Simple mode, switched to Advanced, and saw only the read actions on (2 of 4, 2 of 5, 2 of 3): the level said Read & write while the app behaved read-only. The HC-002 semantics were faithful to the original spec (write turned reads on and left write switches untouched, preserving Advanced curation), but they made the common path dishonest: Read forces writes off, so Read then Read & write silently kept writes off.

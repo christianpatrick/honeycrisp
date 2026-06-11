@@ -1,9 +1,5 @@
 # HC-007: Reminders service
 
-- Task number: HC-007 (no GitHub issue yet)
-- Status: done
-- Date: 2026-06-09
-
 ## Why
 
 Reminders is the everyday-utility app of the four (the mock's audit log leads with "Checked what is due today") and the first service with writes that run without approval: creating and completing reminders are local writes, on by default per the catalog. Per AGENTS.md this is tier 1 access: EventKit for reads and writes both.

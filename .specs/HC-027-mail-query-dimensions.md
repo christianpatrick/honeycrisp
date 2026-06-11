@@ -1,9 +1,5 @@
 # HC-027: Mail query dimensions
 
-- Task number: HC-027 (no GitHub issue yet)
-- Status: done
-- Date: 2026-06-10
-
 ## Why
 
 mail_search required a keyword, so "unread mail since yesterday" and "mail from Alex this week" were inexpressible; the audit log even caught a client searching for the literal keyword "unread". The Envelope Index answers every one of these with where clauses.

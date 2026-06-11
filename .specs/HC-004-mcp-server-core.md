@@ -1,9 +1,5 @@
 # HC-004: MCP server core with tool catalog and gating
 
-- Task number: HC-004 (no GitHub issue yet)
-- Status: done
-- Date: 2026-06-09
-
 ## Why
 
 This is the seam where the permission engine, the audit log, and the eventual app services meet the Model Context Protocol. Every request a client makes flows through one gateway that lists only what the user allowed, refuses what they did not with a sentence a person can read, asks when approval is required, and writes the audit entry either way.

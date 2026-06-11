@@ -1,9 +1,5 @@
 # HC-006: Contacts service
 
-- Task number: HC-006 (no GitHub issue yet)
-- Status: done
-- Date: 2026-06-09
-
 ## Why
 
 Contacts is the simplest of the four apps and establishes the pattern every service follows: a domain protocol the rest of the system fakes, a translator that turns tool arguments into service calls and service results into JSON plus audit copy, a real implementation on the native framework, and a router (ServiceExecutor) that the gateway calls. Per AGENTS.md, Contacts uses tier 1 access: the Contacts framework for reads and writes both, no Apple events anywhere.
@@ -49,5 +45,5 @@ ContactsIntegrationTests, gated behind HONEYCRISP_INTEGRATION=1, running against
 ## Acceptance criteria
 
 - All unit tests above exist, were observed red before implementation (recorded in the commit body), and pass.
-- The integration round trip passes when run from a TCC-capable terminal. The development harness cannot present permission prompts at all (see the AGENTS.md findings entry for 2026-06-09), so the authoritative real-data pass lands with HC-012's app-identity verification.
+- The integration round trip passes when run from a TCC-capable terminal. The development harness cannot present permission prompts at all, so the authoritative real-data pass lands with HC-012's app-identity verification.
 - swift test (ungated) stays green and fast.

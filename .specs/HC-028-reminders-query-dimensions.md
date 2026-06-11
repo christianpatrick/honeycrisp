@@ -1,9 +1,5 @@
 # HC-028: Reminders due window and lists
 
-- Task number: HC-028 (no GitHub issue yet)
-- Status: done
-- Date: 2026-06-10
-
 ## Why
 
 reminders_due answers today; nothing answers "due this week" or "overdue". And the model guesses list names because nothing enumerates them.

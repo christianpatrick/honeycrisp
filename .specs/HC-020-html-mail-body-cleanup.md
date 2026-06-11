@@ -1,9 +1,5 @@
 # HC-020: Readable text from HTML-only mail
 
-- Task number: HC-020 (no GitHub issue yet)
-- Status: done
-- Date: 2026-06-09
-
 ## Why
 
 The first live mail_read returned a newsletter with no text/plain part, and the HTML fallback de-tagged it but kept the contents of style blocks plus the layout's whitespace, so the body led with hundreds of lines of CSS soup. Assistants summarize what we hand them; HTML-only mail must come out as prose.

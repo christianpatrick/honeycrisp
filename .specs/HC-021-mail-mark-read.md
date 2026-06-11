@@ -1,9 +1,5 @@
 # HC-021: Mark mail as read
 
-- Task number: HC-021 (no GitHub issue yet)
-- Status: done
-- Date: 2026-06-09
-
 ## Why
 
 Triage is the natural follow-up to "summarize my unread mail": once the assistant has read a thread back to you, marking it read closes the loop. Christian asked for it after the first real Mail sessions.

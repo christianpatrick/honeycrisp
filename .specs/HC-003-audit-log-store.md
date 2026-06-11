@@ -1,16 +1,12 @@
 # HC-003: Audit log store
 
-- Task number: HC-003 (no GitHub issue yet)
-- Status: done
-- Date: 2026-06-09
-
 ## Why
 
 The Activity tab is the design's accountability story: every request lands in an expandable row with an outcome badge, and the Status tab's glance tiles (Requests today, You approved) are computed from the same record. The store also embodies the privacy promise, so it is local, capped, and clearable, and it must never leave the Mac.
 
 ## Scope
 
-- The AuditEntry model matching the catalog spec: app, action id, kind, outcome (allowed, denied, asked), the human sentence shown in the row, the client name, a timestamp, and the expandable detail (summary plus ordered label and value rows).
+- The AuditEntry model: app, action id, kind, outcome (allowed, denied, asked), the human sentence shown in the row, the client name, a timestamp, and the expandable detail (summary plus ordered label and value rows).
 - An actor-backed store persisting JSONL at ~/Library/Application Support/honeycrisp/audit.jsonl: append, newest-first reads with an optional limit, tile counts, retention trimming, and clear.
 
 ## Out of scope

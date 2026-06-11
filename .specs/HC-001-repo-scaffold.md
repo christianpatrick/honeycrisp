@@ -1,12 +1,8 @@
 # HC-001: Repo scaffold
 
-- Task number: HC-001 (no GitHub issue yet)
-- Status: done
-- Date: 2026-06-09
-
 ## Why
 
-The repository starts empty. The product spec arrived on 2026-06-09 and Christian locked the foundational decisions the same day: the menu bar app is the hub, outbound writes are real sends behind notification approval, there is no GitHub remote yet so specs use task numbers, the minimum is macOS 15, every bit of the project is native Swift, osascript is banned, and nothing ever writes a data store another app owns. Those rules need to live in the repo before any behavior is built, and the spec needs to be preserved as the spec it is.
+The repository starts empty. Christian locked the foundational decisions up front: the menu bar app is the hub, outbound writes are real sends behind notification approval, there is no GitHub remote yet so specs use task numbers, the minimum is macOS 15, every bit of the project is native Swift, osascript is banned, and nothing ever writes a data store another app owns. Those rules need to live in the repo before any behavior is built.
 
 ## Scope
 
@@ -16,9 +12,8 @@ The repository starts empty. The product spec arrived on 2026-06-09 and Christia
 - CLAUDE.md as a pointer to AGENTS.md.
 - CONTRIBUTING.md in the project voice.
 - .spec/README.md: the spec process, template, and index.
-- the spec : the zip contents imported verbatim, plus AGENTS.md explaining provenance and what binds.
 - assets/: the README image set (banners, app icons, marks) at the paths the README expects.
-- README.md adapted from the product spec with three honest changes: macOS 15 stated, install copy reflects the menu bar app with a bundled CLI and the not-yet-live tap, and the privacy lines account for the local activity list.
+- README.md with three honest framing choices: macOS 15 stated, install copy reflects the menu bar app with a bundled CLI and the not-yet-live tap, and the privacy lines account for the local activity list.
 - Package.swift with a HoneycrispCore library target and a version constant, so swift build is green from the first commit.
 
 ## Out of scope
@@ -36,6 +31,5 @@ None. Scaffolding, assets, and docs are TDD-exempt per AGENTS.md process rule 2.
 ## Acceptance criteria
 
 - `swift build` succeeds from the repo root.
-- AGENTS.md, CLAUDE.md, CONTRIBUTING.md, LICENSE, README.md, .spec/README.md, and AGENTS.md exist with the content described above.
-- the spec  matches the delivered zip contents.
+- AGENTS.md, CLAUDE.md, CONTRIBUTING.md, LICENSE, README.md, and .specs/README.md exist with the content described above.
 - README image paths resolve against assets/.

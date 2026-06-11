@@ -1,12 +1,8 @@
 # HC-023: Calendar service
 
-- Task number: HC-023 (no GitHub issue yet)
-- Status: done
-- Date: 2026-06-09
-
 ## Why
 
-Calendar is the fifth app, requested by Christian with the brand spec that ships its hand-built icon. "What is on today" sits naturally beside "what is due today", and creating events closes the capture loop. Per the AGENTS.md hierarchy this is tier 1: EventKit for reads and writes both, the same framework story as Reminders.
+Calendar is the fifth app, requested by Christian, with a hand-built icon shipped in assets/. "What is on today" sits naturally beside "what is due today", and creating events closes the capture loop. Per the AGENTS.md hierarchy this is tier 1: EventKit for reads and writes both, the same framework story as Reminders.
 
 ## Scope
 

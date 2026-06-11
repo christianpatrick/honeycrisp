@@ -1,9 +1,5 @@
 # HC-029: Calendar explicit range and calendars list
 
-- Task number: HC-029 (no GitHub issue yet)
-- Status: done
-- Date: 2026-06-10
-
 ## Why
 
 calendar_list only looks ahead from now by a day count; "what is on next Tuesday" should not require arithmetic. And calendar names are guessable only.

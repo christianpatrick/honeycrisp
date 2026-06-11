@@ -1,12 +1,8 @@
 # HC-025: Remove the misleading messages_draft action
 
-- Task number: HC-025 (no GitHub issue yet)
-- Status: done
-- Date: 2026-06-09
-
 ## Why
 
-iMessage has no draft concept. The HC-008 catalog carried messages.draft from the original spec as "compose, then send after approval", but both messages_draft and messages_send call the same send(), so drafting just sends, under a name that implies it does not. Christian confirmed there is no real draft and asked to remove it. A tool whose name lies about its effect is worse than no tool.
+iMessage has no draft concept. The HC-008 catalog carried messages.draft as "compose, then send after approval", but both messages_draft and messages_send call the same send(), so drafting just sends, under a name that implies it does not. Christian confirmed there is no real draft and asked to remove it. A tool whose name lies about its effect is worse than no tool.
 
 ## Scope
 

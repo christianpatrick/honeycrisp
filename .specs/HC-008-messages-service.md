@@ -1,9 +1,5 @@
 # HC-008: Messages service
 
-- Task number: HC-008 (no GitHub issue yet)
-- Status: done
-- Date: 2026-06-09
-
 ## Why
 
 Messages is the service where the AGENTS.md access hierarchy earns its keep: reads come from chat.db read-only (tier 2), sending goes out as one raw in-process Apple event (tier 3, approval-gated at the gateway), and marking read drives Messages through its own URL scheme so the daemon owns the state change (tier 4, the SIP-safe approach carried over from the previous build). Nothing here ever writes a data store Messages owns.

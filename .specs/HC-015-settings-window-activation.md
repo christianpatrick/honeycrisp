@@ -1,9 +1,5 @@
 # HC-015: Bring the Settings window to the front
 
-- Task number: HC-015 (no GitHub issue yet)
-- Status: done
-- Date: 2026-06-09
-
 ## Why
 
 Honeycrisp is an accessory app (LSUIElement, no Dock icon), and macOS does not activate accessory apps just because one of their windows appeared. Opening Settings from the panel therefore presented the window behind every other app.

@@ -1,9 +1,5 @@
 # HC-013: v0.1.1 fixes, structuredContent shape and the collapsed panel
 
-- Task number: HC-013 (no GitHub issue yet)
-- Status: done
-- Date: 2026-06-09
-
 ## Why
 
 First real-world session: onboarding granted everything, Claude Desktop connected and called tools, the services did their jobs (the audit log shows allowed reads returning 10 conversations, 5 mail summaries, 14 reminders), and the client still showed every call as failed. Claude Desktop rejects any tool result whose structuredContent is not a JSON object ("the tool result isn't coming back as a valid dictionary"), and our list-returning tools passed their JSON arrays straight through as structuredContent. The MCP spec defines structuredContent as an optional JSON object, so the client is right and we were wrong.

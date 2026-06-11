@@ -1,6 +1,6 @@
 # Specs
 
-Every task in this repository starts as a spec in this folder, written and committed before the code. Specs are numbered HC-NNN in the order the work was planned. There is no GitHub remote yet, so specs reference their task number; if the project gains a GitHub repo, newer specs reference issue numbers instead.
+Every task in this repository starts as a spec in this folder, written and committed before the code. Specs are numbered HC-NNN in the order the work was planned. The status of each one lives in the index below.
 
 A spec is done when its acceptance criteria are verifiably true on this machine, with the test evidence the spec called for.
 
@@ -9,12 +9,8 @@ A spec is done when its acceptance criteria are verifiably true on this machine,
 ```markdown
 # HC-NNN: Title
 
-- Task number: HC-NNN (no GitHub issue yet)
-- Status: draft | accepted | done
-- Date: YYYY-MM-DD
-
 ## Why
-What problem this solves and where the requirement comes from (the product spec, AGENTS.md decision, user request).
+What problem this solves and where the requirement comes from (an AGENTS.md decision, a user request).
 
 ## Scope
 What this task delivers.

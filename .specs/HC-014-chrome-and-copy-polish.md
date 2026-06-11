@@ -1,12 +1,8 @@
 # HC-014: Chrome consistency and in-app copy trim
 
-- Task number: HC-014 (no GitHub issue yet)
-- Status: done
-- Date: 2026-06-09
-
 ## Why
 
-Christian's first pass through the running app surfaced two paper cuts. First, privacy reassurance copy ("Everything runs on your Mac...") repeats inside the app in three places; the marketing site owns that story, and the app should not editorialize, ever. Second, the chrome is inconsistent: the native segmented pickers follow the system accent (blue on this Mac), the granting controls are brand red, and the Settings toggles sit on the default accent, so three different schemes show at once. The product System direction wants neutral segmented controls (white selected segment on a gray track, like the mock's tabs) with the brand red reserved for interactive accents: buttons, switches, and the granting tri-toggle.
+Christian's first pass through the running app surfaced two paper cuts. First, privacy reassurance copy ("Everything runs on your Mac...") repeats inside the app in three places; the marketing site owns that story, and the app should not editorialize, ever. Second, the chrome is inconsistent: the native segmented pickers follow the system accent (blue on this Mac), the granting controls are brand red, and the Settings toggles sit on the default accent, so three different schemes show at once. The System direction wants neutral segmented controls (white selected segment on a gray track, like the mock's tabs) with the brand red reserved for interactive accents: buttons, switches, and the granting tri-toggle.
 
 ## Scope
 

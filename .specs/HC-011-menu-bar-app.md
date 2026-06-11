@@ -1,22 +1,18 @@
 # HC-011: Menu bar app
 
-- Task number: HC-011 (no GitHub issue yet)
-- Status: done
-- Date: 2026-06-09
-
 ## Why
 
-The product deliverable is the System-direction control surface: a menu bar panel with Status, Permissions, and Activity, first-run onboarding, and the approval notification. The app is also the architecture: it hosts the hub server in process and owns the TCC identity, which is the grant-once story.
+The control surface is the System direction: a menu bar panel with Status, Permissions, and Activity, first-run onboarding, and the approval notification. The app is also the architecture: it hosts the hub server in process and owns the TCC identity, which is the grant-once story.
 
 ## Scope
 
 - HoneycrispMenuBar executable target: SwiftUI MenuBarExtra (window style) with the brand glyph as a template image, plus an onboarding window on first run and a Settings scene. LSUIElement comes from the packaged Info.plist.
 - AppModel (@MainActor, @Observable): owns the live config (persisting every mutation), the audit store, the approval broker, the client registry, and the loopback server lifecycle (start, pause, port from config, ephemeral port supported for tests). It exposes the panel's data: server state, clients, glance counts, audit entries, pending approvals.
-- Panel UI matching the panel spec in the System direction: header (icon, title, clients-connected line, Running and Paused pill), segmented Status, Permissions, Activity tabs, the two glance tiles, connected clients group, per-app access summary with Manage, Simple mode tri-toggles, Advanced mode expandable per-action switches with read and write badges, expandable audit rows with the three outcome badges and the detail grid, Open full history, and the footer (Settings, version, Quit).
-- Onboarding matching the onboarding spec: Welcome, Allow access (four rows wired to the real grants: Contacts and Reminders prompt in place; Mail and Messages need Full Disk Access so their button opens the System Settings pane and the row re-probes), What it can do (tri-toggles writing the real config), Connect (client pick, real snippet with the bundled CLI path, live connection wait against the registry), Done.
+- Panel UI in the System direction: header (icon, title, clients-connected line, Running and Paused pill), segmented Status, Permissions, Activity tabs, the two glance tiles, connected clients group, per-app access summary with Manage, Simple mode tri-toggles, Advanced mode expandable per-action switches with read and write badges, expandable audit rows with the three outcome badges and the detail grid, Open full history, and the footer (Settings, version, Quit).
+- Onboarding: Welcome, Allow access (four rows wired to the real grants: Contacts and Reminders prompt in place; Mail and Messages need Full Disk Access so their button opens the System Settings pane and the row re-probes), What it can do (tri-toggles writing the real config), Connect (client pick, real snippet with the bundled CLI path, live connection wait against the registry), Done.
 - Approval notifications: UNUserNotificationCenter category with Allow once and Don't allow actions resolving the broker; the panel also lists pending approvals as a fallback surface (notifications require the packaged bundle, and a user can miss a banner).
 - Settings: launch at login (SMAppService), port, optional bearer token, audit retention, clear activity, open the config folder.
-- scripts/package-app.swift: a Swift script (run with the swift command) that builds release, assembles Honeycrisp.app with the locked bundle id app.honeycrisp.Honeycrisp, usage strings, LSUIElement, the bundled CLI named honeycrisp-cli (the case-insensitive filesystem gotcha from AGENTS.md), brand resources from the spec, an icns rendered from the brand icon, and an ad-hoc codesign.
+- scripts/package-app.swift: a Swift script (run with the swift command) that builds release, assembles Honeycrisp.app with the locked bundle id app.honeycrisp.Honeycrisp, usage strings, LSUIElement, the bundled CLI named honeycrisp-cli (the case-insensitive filesystem gotcha from AGENTS.md), brand resources from assets/, an icns rendered from the brand icon, and an ad-hoc codesign.
 
 ## Out of scope
 

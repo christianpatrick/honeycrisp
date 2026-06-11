@@ -1,12 +1,8 @@
 # HC-002: Permission engine and config model
 
-- Task number: HC-002 (no GitHub issue yet)
-- Status: done
-- Date: 2026-06-09
-
 ## Why
 
-Every tool call in Honeycrisp is gated by what the user allowed, and the menu bar panel, the onboarding flow, and the audit log all hang off the same model. The product the catalog spec defines the apps, actions, kinds, labels, and default switches, and the panel spec defines how Simple mode level changes reset switches. This task turns that into the typed domain core everything else builds on.
+Every tool call in Honeycrisp is gated by what the user allowed, and the menu bar panel, the onboarding flow, and the audit log all hang off the same model. The product spec defines the apps, actions, kinds, labels, and default switches, and how Simple mode level changes reset switches. This task turns that into the typed domain core everything else builds on.
 
 ## Scope
 
@@ -23,7 +19,7 @@ Every tool call in Honeycrisp is gated by what the user allowed, and the menu ba
 
 ### Catalog
 
-From the catalog spec, plus one carried-over action (messages mark read). Kind write implies the action mutates something; requiresApproval marks the writes whose effect leaves the Mac, and those three post a notification every time per the AGENTS.md permission model.
+From the product spec, plus one carried-over action (messages mark read). Kind write implies the action mutates something; requiresApproval marks the writes whose effect leaves the Mac, and those three post a notification every time per the AGENTS.md permission model.
 
 | App | Action id | Label | Kind | Default | Approval |
 | --- | --- | --- | --- | --- | --- |
@@ -44,12 +40,12 @@ From the catalog spec, plus one carried-over action (messages mark read). Kind w
 | contacts | fields | Read phone & email | read | on | no |
 | contacts | create | Add a contact | write | off | no |
 
-App display data (name and blurb) also comes from the catalog spec so the panel and onboarding reuse it.
+App display data (name and blurb) lives in the catalog too so the panel and onboarding reuse it.
 
 Notes:
 - messages.draft is "compose, then send after the user approves the notification", which is why it carries the approval flag. It is the designed way to reply in Messages.
 - messages.mark_read can emit a read receipt to the other person, so it ships default off; turning it on is a deliberate choice. It does not require per-use approval.
-- Default levels come from the catalog spec perm values: mail write, reminders write, messages read, contacts read.
+- Default levels: mail write, reminders write, messages read, contacts read.
 
 ### Evaluation
 
@@ -66,7 +62,7 @@ Rule 3 matters because a hand-edited config can say level read with a write swit
 
 ### Mutations
 
-- setLevel follows the panel spec setPerm exactly: off turns every switch off; read turns read switches on and write switches off; write turns read switches on and leaves write switches as they were.
+- setLevel follows the spec exactly: off turns every switch off; read turns read switches on and write switches off; write turns read switches on and leaves write switches as they were.
 - setAction toggles one switch, and turning a switch on auto-raises the level so the switch is actually effective (read action: off becomes read; write action: off or read becomes write). Without this, Advanced mode could show an enabled switch that rule 2 or 3 silently overrides, which would be a lying UI. Turning a switch off never lowers the level.
 
 ### Listing
@@ -90,7 +86,7 @@ Failing first, in Tests/HoneycrispCoreTests, using Swift Testing.
 ActionCatalogTests:
 - Sixteen actions with per-app counts 4, 4, 5, 3.
 - Exactly three approval actions: mail.send, messages.send, messages.draft.
-- Spot checks against the catalog spec: labels, kinds, and defaults for mail.send, messages.mark_read, reminders.complete.
+- Spot checks: labels, kinds, and defaults for mail.send, messages.mark_read, reminders.complete.
 
 PermissionEngineTests:
 - Default config: mail.search allowed, mail.send denied(actionOff), messages.recent allowed, messages.draft denied(readOnlyApp), reminders.create allowed, contacts.create denied(readOnlyApp). The last two looked like actionOff at first, but the evaluation order is normative: levels gate before switches, so a write action under a read level reports readOnlyApp, which is also the truthful message for a Simple mode user. mail.send reports actionOff because mail's default level is write.

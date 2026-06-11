@@ -1,9 +1,5 @@
 # HC-009: Mail service
 
-- Task number: HC-009 (no GitHub issue yet)
-- Status: done
-- Date: 2026-06-09
-
 ## Why
 
 Mail is the headline integration ("Pull the thread you half remember, summarize it, and draft a reply that sounds like you") and the last of the four. Reads come from Mail's Envelope Index SQLite plus the .emlx files on disk, both read-only (tier 2). Drafts and sends are raw in-process Apple events to Mail (tier 3); a draft is a local write that lands in the Drafts mailbox, a send is outbound and approval-gated at the gateway. Nothing here ever writes a store Mail owns.

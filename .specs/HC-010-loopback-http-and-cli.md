@@ -1,9 +1,5 @@
 # HC-010: Loopback HTTP transport, CLI bridge, client tracking
 
-- Task number: HC-010 (no GitHub issue yet)
-- Status: done
-- Date: 2026-06-09
-
 ## Why
 
 The app-as-hub architecture becomes real here: one supervised process serving MCP over loopback HTTP, a CLI that bridges stdio clients into it so the README's Claude Desktop snippet works unchanged, and the connected-clients registry the panel header counts ("2 clients connected").

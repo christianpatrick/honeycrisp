@@ -1,9 +1,5 @@
 # HC-005: Approval broker
 
-- Task number: HC-005 (no GitHub issue yet)
-- Status: done
-- Date: 2026-06-09
-
 ## Why
 
 The design's approval moment: when the assistant asks to do something whose effect leaves the Mac, Honeycrisp does not act silently. The gateway already classifies those calls as needsApproval; this task is the piece that suspends the tool call, surfaces the request to the user, and resumes it with their answer. HC-011 attaches the actual notification UI; the broker is the engine underneath, designed so the UI is a dumb presenter.

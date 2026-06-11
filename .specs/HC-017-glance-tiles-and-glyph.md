@@ -1,9 +1,5 @@
 # HC-017: Equal glance tiles and a visible menu bar glyph
 
-- Task number: HC-017 (no GitHub issue yet)
-- Status: done
-- Date: 2026-06-09
-
 ## Why
 
 The two Status tiles render at different heights because only "You approved" carries a third line, and the menu bar glyph reads tiny because the brand SVG's star fills only about 64 percent of its 512 canvas, so a 16 point render shows a 10 point star.

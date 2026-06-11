@@ -1,9 +1,5 @@
 # HC-026: Messages query dimensions
 
-- Task number: HC-026 (no GitHub issue yet)
-- Status: done
-- Date: 2026-06-10
-
 ## Why
 
 Christian's audit of the tool surface: the reads are keyword-gated when keywords should be one filter among several. "What did April and I talk about this week" is inexpressible today, since messages_search requires a query and messages_recent returns one preview per conversation. chat.db answers all of these trivially.

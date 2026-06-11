@@ -1,9 +1,5 @@
 # HC-019: Probe the Envelope Index recipients schema at runtime
 
-- Task number: HC-019 (no GitHub issue yet)
-- Status: done
-- Date: 2026-06-09
-
 ## Why
 
 Reading a mail thread on the real Mac failed with "no such column: r.message_id". The HC-009 recipients query assumed the documented older schema (recipients.message_id and recipients.address_id), but this Mail version names those reference columns differently. Search never touches recipients, which is why it worked. Guessing schemas got us here, so the fix is to ask SQLite.
