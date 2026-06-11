@@ -18,7 +18,7 @@ struct CalendarIntegrationTests {
             NewEvent(title: marker, start: start, end: start.addingTimeInterval(1800)))
         defer { Self.remove(identifier: created.id) }
 
-        let upcoming = try await service.upcoming(days: 1, calendar: nil, limit: 500)
+        let upcoming = try await service.events(from: Date(), to: Date().addingTimeInterval(86400), calendar: nil, limit: 500)
         #expect(upcoming.contains { $0.id == created.id })
         #expect(upcoming.first { $0.id == created.id }?.title == marker)
     }

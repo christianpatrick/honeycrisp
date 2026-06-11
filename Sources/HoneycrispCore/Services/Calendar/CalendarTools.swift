@@ -18,6 +18,8 @@ public struct CalendarTools: Sendable {
             return try await today(arguments, defaultLimit: defaultLimit)
         case "list":
             return try await list(arguments, defaultLimit: defaultLimit)
+        case "calendars":
+            return try await calendarNames()
         case "create":
             return try await create(arguments)
         default:
@@ -46,9 +48,18 @@ public struct CalendarTools: Sendable {
         let days = min(max(int(arguments["days"]) ?? 7, 1), 365)
         let calendar = string(arguments["calendar"])
         let limit = int(arguments["limit"]) ?? defaultLimit
-        let events = try await service.upcoming(days: days, calendar: calendar, limit: limit)
+        let explicitFrom = try dateArg(arguments, "from")
+        let explicitTo = try dateArg(arguments, "to")
+        let from = explicitFrom ?? Date()
+        let to = explicitTo ?? from.addingTimeInterval(Double(days) * 86400)
+        let events = try await service.events(from: from, to: to, calendar: calendar, limit: limit)
+        let explicitWindow = explicitFrom != nil || explicitTo != nil
+        let window =
+            explicitWindow
+            ? "\(ToolDates.rowString(from)) to \(ToolDates.rowString(to))"
+            : "Next \(days) day\(days == 1 ? "" : "s")"
         var rows = [
-            AuditDetailRow(label: "Window", value: "Next \(days) day\(days == 1 ? "" : "s")"),
+            AuditDetailRow(label: "Window", value: window),
             AuditDetailRow(label: "Returned", value: count(events.count)),
         ]
         if let calendar {
@@ -56,9 +67,25 @@ public struct CalendarTools: Sendable {
         }
         return ToolOutcome(
             content: try ToolJSON.encode(events),
-            auditAction: "Listed the next \(days) day\(days == 1 ? "" : "s")",
+            auditAction: explicitWindow
+                ? "Listed a date range"
+                : "Listed the next \(days) day\(days == 1 ? "" : "s")",
             auditSummary: "Read \(count(events.count)). Nothing was modified.",
             auditRows: rows
+        )
+    }
+
+    private func calendarNames() async throws -> ToolOutcome {
+        let names = try await service.calendarNames()
+        return ToolOutcome(
+            content: try ToolJSON.encode(names),
+            auditAction: "Listed the calendars",
+            auditSummary: "Read \(names.count) calendar names. Nothing was modified.",
+            auditRows: [
+                AuditDetailRow(
+                    label: "Returned",
+                    value: names.count == 1 ? "1 calendar" : "\(names.count) calendars")
+            ]
         )
     }
 

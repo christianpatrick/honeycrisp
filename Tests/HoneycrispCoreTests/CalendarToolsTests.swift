@@ -5,7 +5,8 @@ import HoneycrispCore
 
 private actor FakeCalendarService: CalendarServicing {
     private(set) var todayLimits: [Int] = []
-    private(set) var upcomingCalls: [(days: Int, calendar: String?, limit: Int)] = []
+    private(set) var rangeCalls: [(from: Date, to: Date, calendar: String?, limit: Int)] = []
+    private(set) var calendarNameCalls = 0
     private(set) var created: [NewEvent] = []
 
     var todayResult: [CalendarEvent] = []
@@ -18,9 +19,16 @@ private actor FakeCalendarService: CalendarServicing {
         return todayResult
     }
 
-    func upcoming(days: Int, calendar: String?, limit: Int) async throws -> [CalendarEvent] {
-        upcomingCalls.append((days, calendar, limit))
+    func events(from: Date, to: Date, calendar: String?, limit: Int) async throws
+        -> [CalendarEvent]
+    {
+        rangeCalls.append((from, to, calendar, limit))
         return upcomingResult
+    }
+
+    func calendarNames() async throws -> [String] {
+        calendarNameCalls += 1
+        return ["Home", "Work"]
     }
 
     func create(_ new: NewEvent) async throws -> CalendarEvent {
@@ -53,7 +61,7 @@ struct CalendarToolsTests {
         #expect(outcome.auditSummary.contains("Nothing was modified"))
     }
 
-    @Test("list defaults to seven days and passes filters through")
+    @Test("list defaults to a seven day window and honors days and explicit ranges")
     func list() async throws {
         let service = FakeCalendarService()
         let tools = CalendarTools(service: service)
@@ -62,13 +70,36 @@ struct CalendarToolsTests {
             action: "list",
             arguments: ["days": 14, "calendar": "Work", "limit": 5],
             defaultLimit: 20)
-        let calls = await service.upcomingCalls
+        let calls = await service.rangeCalls
         #expect(calls.count == 2)
-        #expect(calls.first?.days == 7)
-        #expect(calls.first?.calendar == nil)
-        #expect(calls.last?.days == 14)
-        #expect(calls.last?.calendar == "Work")
-        #expect(calls.last?.limit == 5)
+        let defaultSpan = calls[0].to.timeIntervalSince(calls[0].from)
+        #expect(abs(defaultSpan - 7 * 86400) < 1)
+        let daysSpan = calls[1].to.timeIntervalSince(calls[1].from)
+        #expect(abs(daysSpan - 14 * 86400) < 1)
+        #expect(calls[1].calendar == "Work")
+        #expect(calls[1].limit == 5)
+
+        _ = try await tools.execute(
+            action: "list",
+            arguments: ["from": "2026-06-16T00:00:00", "to": "2026-06-17T00:00:00"],
+            defaultLimit: 20)
+        var components = DateComponents()
+        components.year = 2026
+        components.month = 6
+        components.day = 16
+        let explicit = await service.rangeCalls.last
+        #expect(explicit?.from == Calendar.current.date(from: components))
+        #expect(abs((explicit?.to.timeIntervalSince(explicit?.from ?? .distantPast) ?? 0) - 86400) < 1)
+    }
+
+    @Test("calendars returns the calendar names")
+    func calendarNames() async throws {
+        let service = FakeCalendarService()
+        let tools = CalendarTools(service: service)
+        let outcome = try await tools.execute(action: "calendars", arguments: [:], defaultLimit: 20)
+        #expect(await service.calendarNameCalls == 1)
+        let names = try ToolJSON.decode([String].self, from: outcome.content)
+        #expect(names == ["Home", "Work"])
     }
 
     @Test("create maps fields, parses ISO dates, and defaults the end an hour out")

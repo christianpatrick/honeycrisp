@@ -56,6 +56,8 @@ public struct NewEvent: Codable, Equatable, Sendable {
 /// invitations and nothing here ever leaves the Mac.
 public protocol CalendarServicing: Sendable {
     func today(limit: Int) async throws -> [CalendarEvent]
-    func upcoming(days: Int, calendar: String?, limit: Int) async throws -> [CalendarEvent]
+    /// Events inside an explicit window, ascending by start.
+    func events(from: Date, to: Date, calendar: String?, limit: Int) async throws -> [CalendarEvent]
+    func calendarNames() async throws -> [String]
     func create(_ new: NewEvent) async throws -> CalendarEvent
 }

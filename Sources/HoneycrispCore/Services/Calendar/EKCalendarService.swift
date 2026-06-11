@@ -14,13 +14,17 @@ public struct EKCalendarService: CalendarServicing {
         return fetch(from: start, to: end, calendars: nil, limit: limit, in: store)
     }
 
-    public func upcoming(days: Int, calendar: String?, limit: Int) async throws -> [CalendarEvent]
+    public func events(from start: Date, to end: Date, calendar: String?, limit: Int)
+        async throws -> [CalendarEvent]
     {
         let store = try await authorizedStore()
         let calendars = try calendars(matching: calendar, in: store)
-        let start = Date()
-        let end = start.addingTimeInterval(Double(max(1, days)) * 24 * 3600)
         return fetch(from: start, to: end, calendars: calendars, limit: limit, in: store)
+    }
+
+    public func calendarNames() async throws -> [String] {
+        let store = try await authorizedStore()
+        return store.calendars(for: .event).map(\.title).sorted()
     }
 
     public func create(_ new: NewEvent) async throws -> CalendarEvent {
