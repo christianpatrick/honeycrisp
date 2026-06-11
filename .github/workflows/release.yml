@@ -5,26 +5,56 @@ on:
     branches: [main]
 
 permissions:
-  contents: write
-  issues: write
-  pull-requests: write
+  contents: read
 
 concurrency:
   group: release
   cancel-in-progress: false
 
 jobs:
+  # Keyless job: runs semantic-release (and its npm dependency tree) where no
+  # signing key exists. It analyzes commits, writes release notes, creates a
+  # draft release and the tag, and outputs the computed version.
   release:
-    name: Build, notarize, and release
-    runs-on: macos-26
+    name: Decide version and draft release
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      issues: write
+      pull-requests: write
+    outputs:
+      version: ${{ steps.semantic.outputs.version }}
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
         with:
           fetch-depth: 0
 
-      - uses: actions/setup-node@v6
+      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
         with:
           node-version: lts/*
+          cache: npm
+
+      - run: npm ci
+
+      - id: semantic
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: npx semantic-release
+
+  # Signing job: has the secrets but installs no third-party node code. Builds,
+  # notarizes, Sparkle-signs, uploads the assets, then publishes the draft.
+  publish:
+    name: Build, notarize, and publish
+    needs: release
+    if: needs.release.outputs.version != ''
+    runs-on: macos-26
+    permissions:
+      contents: write
+    env:
+      VERSION: ${{ needs.release.outputs.version }}
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    steps:
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
 
       - name: Import Developer ID certificate
         env:
@@ -34,6 +64,7 @@ jobs:
         run: |
           set -euo pipefail
           KEYCHAIN="$RUNNER_TEMP/honeycrisp.keychain-db"
+          echo "KEYCHAIN=$KEYCHAIN" >> "$GITHUB_ENV"
           echo "$CERT_BASE64" | base64 --decode > "$RUNNER_TEMP/cert.p12"
           security create-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN"
           security set-keychain-settings -lut 21600 "$KEYCHAIN"
@@ -41,8 +72,8 @@ jobs:
           security import "$RUNNER_TEMP/cert.p12" -k "$KEYCHAIN" -P "$CERT_PASSWORD" -T /usr/bin/codesign
           security set-key-partition-list -S apple-tool:,apple: -k "$KEYCHAIN_PASSWORD" "$KEYCHAIN" > /dev/null
           security list-keychains -d user -s "$KEYCHAIN" $(security list-keychains -d user | tr -d '"')
-          # Pass the full common name, not the hash: package-app.swift keys
-          # the notarized path off the identity containing "Developer ID".
+          # Pass the full common name, not the hash: package-app.swift keys the
+          # notarized path off the identity containing "Developer ID".
           IDENTITY=$(security find-identity -v -p codesigning "$KEYCHAIN" | grep "Developer ID Application" | head -1 | awk -F'"' '{print $2}')
           echo "HONEYCRISP_SIGN_IDENTITY=$IDENTITY" >> "$GITHUB_ENV"
           rm "$RUNNER_TEMP/cert.p12"
@@ -58,29 +89,28 @@ jobs:
           printf '%s' "$SPARKLE_ED_PRIVATE_KEY" > "$RUNNER_TEMP/sparkle_key"
           echo "SPARKLE_PRIVATE_KEY_PATH=$RUNNER_TEMP/sparkle_key" >> "$GITHUB_ENV"
 
-      - name: Fetch Sparkle signing tool
+      - name: Build, sign, and notarize
         env:
-          SPARKLE_VERSION: "2.9.3"
-        run: |
-          set -euo pipefail
-          curl -fsSL -o "$RUNNER_TEMP/sparkle.tar.xz" \
-            "https://github.com/sparkle-project/Sparkle/releases/download/${SPARKLE_VERSION}/Sparkle-${SPARKLE_VERSION}.tar.xz"
-          mkdir -p "$RUNNER_TEMP/sparkle"
-          tar -xf "$RUNNER_TEMP/sparkle.tar.xz" -C "$RUNNER_TEMP/sparkle"
-          echo "SPARKLE_SIGN_UPDATE=$RUNNER_TEMP/sparkle/bin/sign_update" >> "$GITHUB_ENV"
-
-      - name: Run semantic-release
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
           NOTARYTOOL_KEY_ID: ${{ secrets.NOTARYTOOL_KEY_ID }}
           NOTARYTOOL_ISSUER_ID: ${{ secrets.NOTARYTOOL_ISSUER_ID }}
+        run: HONEYCRISP_VERSION="$VERSION" swift scripts/package-app.swift
+
+      - name: Make the release archive, appcast, and checksum
+        # sign_update comes from the SwiftPM-verified Sparkle artifact resolved
+        # by the build above; nothing is downloaded.
+        run: HONEYCRISP_VERSION="$VERSION" swift scripts/make-release.swift
+
+      - name: Upload assets and publish the release
         run: |
           set -euo pipefail
-          npm install --no-save \
-            semantic-release \
-            @semantic-release/commit-analyzer \
-            @semantic-release/release-notes-generator \
-            @semantic-release/exec \
-            @semantic-release/github
-          npx semantic-release
+          gh release upload "v$VERSION" \
+            "dist/Honeycrisp-$VERSION.zip" \
+            "dist/Honeycrisp-$VERSION.zip.sha256" \
+            "dist/appcast.xml" --clobber
+          gh release edit "v$VERSION" --draft=false --latest
+
+      - name: Shred keys and keychain
+        if: always()
+        run: |
+          rm -f "$RUNNER_TEMP/notary.p8" "$RUNNER_TEMP/sparkle_key"
+          security delete-keychain "$KEYCHAIN" 2>/dev/null || true

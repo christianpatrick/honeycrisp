@@ -1,0 +1,14 @@
+{
+  "name": "honeycrisp-release",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Release tooling for Honeycrisp (semantic-release). Not part of the app; runs only in the keyless release job.",
+  "license": "MIT",
+  "devDependencies": {
+    "@semantic-release/commit-analyzer": "13.0.1",
+    "@semantic-release/exec": "7.1.0",
+    "@semantic-release/github": "12.0.8",
+    "@semantic-release/release-notes-generator": "14.1.1",
+    "semantic-release": "25.0.5"
+  }
+}

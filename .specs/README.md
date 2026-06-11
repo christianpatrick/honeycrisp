@@ -67,3 +67,4 @@ Checkable statements that make this task done.
 | HC-033 | semantic-release pipeline | done |
 | HC-034 | Sparkle in-app updater | done |
 | HC-035 | Read-only by default | done |
+| HC-036 | Harden the release pipeline | done |

@@ -49,7 +49,7 @@ func fail(_ message: String) -> Never {
 
 // 1. Release build.
 print("building release...")
-try run("/usr/bin/swift", ["build", "-c", "release"])
+try run("/usr/bin/swift", ["build", "-c", "release", "--force-resolved-versions"])
 
 let releaseDir = root.appendingPathComponent(".build/release")
 let appExecutable = releaseDir.appendingPathComponent("HoneycrispMenuBar")

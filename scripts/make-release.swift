@@ -65,9 +65,21 @@ let zip = root.appendingPathComponent("dist/\(zipName)")
 try? fileManager.removeItem(at: zip)
 run("/usr/bin/ditto", ["-c", "-k", "--keepParent", app.path, zip.path])
 
-// 2. Sparkle EdDSA signature. sign_update prints the attributes the
-//    enclosure needs: sparkle:edSignature="..." length="...".
-let signUpdate = require("SPARKLE_SIGN_UPDATE")
+// 2. Sparkle EdDSA signature, using the sign_update tool SwiftPM already
+//    fetched into Sparkle's checksum-verified artifact, not a separate
+//    download. sign_update prints the enclosure attributes:
+//    sparkle:edSignature="..." length="...".
+func findSignUpdate() -> String {
+    let preferred = root.appendingPathComponent(
+        ".build/artifacts/sparkle/Sparkle/bin/sign_update")
+    if fileManager.fileExists(atPath: preferred.path) { return preferred.path }
+    for line in capture("/usr/bin/find", [".build/artifacts", "-name", "sign_update", "-type", "f"])
+        .split(separator: "\n") where !line.contains("old_dsa") {
+        return root.appendingPathComponent(String(line)).path
+    }
+    fail("sign_update not found under .build/artifacts; build first so SwiftPM resolves Sparkle")
+}
+let signUpdate = findSignUpdate()
 let keyPath = require("SPARKLE_PRIVATE_KEY_PATH")
 let signatureAttributes = capture(signUpdate, ["-f", keyPath, zip.path])
 
@@ -106,4 +118,12 @@ let appcast = """
 
 try! appcast.write(
     to: root.appendingPathComponent("dist/appcast.xml"), atomically: true, encoding: .utf8)
-print("release: \(zipName) and appcast.xml for \(version)")
+
+// 5. A SHA-256 checksum for people who download the zip by hand. Sparkle's
+//    EdDSA signature already protects the auto-update path.
+let shaLine = capture("/usr/bin/shasum", ["-a", "256", zip.path])
+let hash = shaLine.split(separator: " ").first.map(String.init) ?? ""
+try! "\(hash)  \(zipName)\n".write(
+    to: root.appendingPathComponent("dist/\(zipName).sha256"), atomically: true, encoding: .utf8)
+
+print("release: \(zipName), appcast.xml, and \(zipName).sha256 for \(version)")

@@ -5,6 +5,9 @@ on:
   push:
     branches: [main]
 
+permissions:
+  contents: read
+
 concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: true
@@ -14,15 +17,16 @@ jobs:
     name: Build and test
     runs-on: macos-26
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
 
       - name: Show toolchain
         run: swift --version
 
       - name: Build
-        run: swift build --build-tests
+        # Pin to Package.resolved so dependencies cannot float past it.
+        run: swift build --build-tests --force-resolved-versions
 
       - name: Test
         # Integration tests are gated behind HONEYCRISP_INTEGRATION and need
         # real TCC grants, so they stay out of CI. This runs the rest.
-        run: swift test
+        run: swift test --force-resolved-versions
