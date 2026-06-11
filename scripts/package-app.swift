@@ -218,8 +218,66 @@ func signingIdentity() -> String {
     return "-"
 }
 
+/// Submits the signed app to Apple and staples the ticket, but only when
+/// notarytool credentials are in the environment (the release workflow sets
+/// them). A local build without them signs and stops, which is correct: a
+/// developer's own machine runs an un-notarized build it built itself.
+func notarizeAndStaple() {
+    let env = ProcessInfo.processInfo.environment
+    guard let keyID = env["NOTARYTOOL_KEY_ID"], !keyID.isEmpty,
+        let issuer = env["NOTARYTOOL_ISSUER_ID"], !issuer.isEmpty,
+        let keyPath = env["NOTARYTOOL_KEY_PATH"], !keyPath.isEmpty
+    else {
+        print(
+            "notarization: skipped (set NOTARYTOOL_KEY_ID, NOTARYTOOL_ISSUER_ID, NOTARYTOOL_KEY_PATH)"
+        )
+        return
+    }
+    print("notarizing (submits to Apple and waits)...")
+    let zip = root.appendingPathComponent("dist/Honeycrisp.zip")
+    try? fileManager.removeItem(at: zip)
+    do {
+        try run("/usr/bin/ditto", ["-c", "-k", "--keepParent", app.path, zip.path])
+        try run(
+            "/usr/bin/xcrun",
+            [
+                "notarytool", "submit", zip.path,
+                "--key", keyPath, "--key-id", keyID, "--issuer", issuer, "--wait",
+            ])
+        try run("/usr/bin/xcrun", ["stapler", "staple", app.path])
+        print("notarized and stapled")
+    } catch {
+        fail("notarization failed")
+    }
+}
+
 let identity = signingIdentity()
+let isDeveloperID = identity.contains("Developer ID")
 print(identity == "-" ? "signing ad-hoc..." : "signing with \(identity)...")
-try run("/usr/bin/codesign", ["--force", "--deep", "--sign", identity, app.path])
+
+if isDeveloperID {
+    // Distribution build: hardened runtime, a secure timestamp, and the
+    // Apple Events entitlement. Sign the nested CLI first and the bundle
+    // last; notarization rejects the --deep shortcut.
+    let entitlements = root.appendingPathComponent("scripts/Honeycrisp.entitlements")
+    guard fileManager.fileExists(atPath: entitlements.path) else {
+        fail("missing entitlements: scripts/Honeycrisp.entitlements")
+    }
+    func sign(_ target: String) throws {
+        try run(
+            "/usr/bin/codesign",
+            [
+                "--force", "--options", "runtime", "--timestamp",
+                "--entitlements", entitlements.path, "--sign", identity, target,
+            ])
+    }
+    try sign(macOS.appendingPathComponent("honeycrisp-cli").path)
+    try sign(app.path)
+    notarizeAndStaple()
+} else {
+    // Local build: keep the simple, FDA-stable Apple Development (or ad-hoc)
+    // sign unchanged.
+    try run("/usr/bin/codesign", ["--force", "--deep", "--sign", identity, app.path])
+}
 
 print("done: \(app.path)")

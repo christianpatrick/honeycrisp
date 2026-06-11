@@ -63,3 +63,4 @@ Checkable statements that make this task done.
 | HC-029 | Calendar query dimensions: explicit range and calendar discovery | done |
 | HC-030 | Automatic update checks preference | done |
 | HC-031 | Tag-derived version | done |
+| HC-032 | Notarized Developer ID packaging | done |
