@@ -2,7 +2,7 @@ import HoneycrispCore
 import SwiftUI
 
 /// The menu bar panel: header, Status / Permissions / Activity, footer.
-/// Layout and copy mirror the panel spec in the System direction.
+/// Layout and copy follow the System direction.
 struct PanelView: View {
     @Environment(AppModel.self) private var model
     @Environment(\.openSettings) private var openSettings

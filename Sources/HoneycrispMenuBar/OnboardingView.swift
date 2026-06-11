@@ -1,7 +1,7 @@
 import HoneycrispCore
 import SwiftUI
 
-/// First run, five steps, mirroring the onboarding spec:
+/// First run, five steps:
 /// Welcome, Allow access, What it can do, Connect, Done.
 struct OnboardingView: View {
     @Environment(AppModel.self) private var model

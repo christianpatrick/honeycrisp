@@ -17,7 +17,7 @@ public enum ActionKind: String, Codable, Sendable, Equatable {
     case write
 }
 
-/// Display data for one app, straight from the catalog spec.
+/// Display data for one app.
 public struct AppDescriptor: Sendable, Equatable {
     public let id: AppID
     public let name: String
@@ -37,8 +37,8 @@ public struct ActionDescriptor: Sendable, Equatable {
     public let requiresApproval: Bool
 }
 
-/// The source of truth for what Honeycrisp can do, mirrored one to one from
-/// .spec/HC-002-permission-engine.md and the catalog spec.
+/// The source of truth for what Honeycrisp can do. See
+/// .specs/HC-002-permission-engine.md.
 public enum ActionCatalog {
     public static let apps: [AppDescriptor] = [
         AppDescriptor(id: .mail, name: "Mail", blurb: "Search, read, and draft mail."),

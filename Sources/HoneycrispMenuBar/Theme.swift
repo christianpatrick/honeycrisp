@@ -1,8 +1,7 @@
 import SwiftUI
 
 /// The System direction: stock materials and SF Pro everywhere, with the
-/// brand showing up only as the accent and the app icons. Values come from
-/// the brand tokens.
+/// brand showing up only as the accent and the app icons.
 enum Theme {
     static let red = Color(red: 0xC5 / 255, green: 0x45 / 255, blue: 0x3A / 255)
     static let gold = Color(red: 0xB6 / 255, green: 0x84 / 255, blue: 0x1F / 255)
@@ -13,7 +12,7 @@ enum Theme {
     /// segment. Accent colors never touch these.
     static let segmentTrack = Color.secondary.opacity(0.12)
 
-    /// Fallback SF Symbols and tints for the four apps when the brand SVGs
+    /// Fallback SF Symbols and tints for the five apps when the brand SVGs
     /// are not bundled (bare swift run).
     static func fallbackIcon(for app: AppID) -> (symbol: String, tint: Color) {
         switch app {
@@ -48,7 +47,7 @@ enum BrandFont {
     }
 }
 
-/// The locked mark from the brand card: Honeycrisp in Sora
+/// The locked brand mark: Honeycrisp in Sora
 /// semibold at -0.03em tracking, with a brand-red period.
 struct Wordmark: View {
     var size: CGFloat = 15
