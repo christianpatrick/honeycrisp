@@ -15,7 +15,10 @@ private let alexSummary = MailMessageSummary(
 )
 
 private actor FakeMailService: MailServicing {
-    private(set) var searches: [(query: String, mailbox: String?, limit: Int)] = []
+    private(set) var searches:
+        [(query: String?, mailbox: String?, from: String?, to: String?, since: Date?, until: Date?,
+          unreadOnly: Bool, limit: Int)] = []
+    private(set) var mailboxCalls = 0
     private(set) var threadCalls: [(id: String, limit: Int)] = []
     private(set) var summaryCalls: [String] = []
     private(set) var drafts: [MailDraft] = []
@@ -41,9 +44,17 @@ private actor FakeMailService: MailServicing {
     func setSearchResult(_ result: [MailMessageSummary]) { searchResult = result }
     func setSummaryResult(_ result: MailMessageSummary?) { summaryResult = result }
 
-    func search(query: String, mailbox: String?, limit: Int) async throws -> [MailMessageSummary] {
-        searches.append((query, mailbox, limit))
+    func search(
+        query: String?, mailbox: String?, from: String?, to: String?,
+        since: Date?, until: Date?, unreadOnly: Bool, limit: Int
+    ) async throws -> [MailMessageSummary] {
+        searches.append((query, mailbox, from, to, since, until, unreadOnly, limit))
         return searchResult
+    }
+
+    func mailboxes() async throws -> [String] {
+        mailboxCalls += 1
+        return ["INBOX", "Sent Messages"]
     }
 
     func thread(id: String, limit: Int) async throws -> MailThread {
@@ -90,10 +101,37 @@ struct MailToolsTests {
         let decoded = try ToolJSON.decode([MailMessageSummary].self, from: outcome.content)
         #expect(decoded == [alexSummary])
         #expect(outcome.auditAction.contains("Q3"))
+    }
 
-        await #expect(throws: ToolFailure.self) {
-            _ = try await tools.execute(action: "search", arguments: [:], defaultLimit: 20)
-        }
+    @Test("search is filters-first and no filters means browse the latest")
+    func searchFilters() async throws {
+        let service = FakeMailService()
+        let tools = MailTools(service: service)
+        let browse = try await tools.execute(action: "search", arguments: [:], defaultLimit: 20)
+        #expect(browse.auditAction == "Read the latest mail")
+
+        _ = try await tools.execute(
+            action: "search",
+            arguments: [
+                "from": "alex", "unread_only": true, "since": "2026-06-09T00:00:00",
+            ],
+            defaultLimit: 20)
+        let call = await service.searches.last
+        #expect(call?.query == nil)
+        #expect(call?.from == "alex")
+        #expect(call?.unreadOnly == true)
+        #expect(call?.since != nil)
+    }
+
+    @Test("mailboxes lists names with read-only audit copy")
+    func mailboxes() async throws {
+        let service = FakeMailService()
+        let tools = MailTools(service: service)
+        let outcome = try await tools.execute(action: "mailboxes", arguments: [:], defaultLimit: 20)
+        #expect(await service.mailboxCalls == 1)
+        let names = try ToolJSON.decode([String].self, from: outcome.content)
+        #expect(names == ["INBOX", "Sent Messages"])
+        #expect(outcome.auditSummary.contains("Nothing was modified"))
     }
 
     @Test("read returns the thread with the mock's audit copy")

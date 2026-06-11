@@ -100,7 +100,7 @@ struct MCPHTTPRouterTests {
             clientHeader: nil)
         let decoded = try JSONDecoder().decode(
             ResponseEnvelope<ListTools.Result>.self, from: response.body)
-        #expect(decoded.result?.tools.count == 14)
+        #expect(decoded.result?.tools.count == 17)
     }
 
     @Test("the client header attributes the audit entry per request")

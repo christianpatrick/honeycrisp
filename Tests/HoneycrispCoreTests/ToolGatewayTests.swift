@@ -69,15 +69,15 @@ struct ToolGatewayTests {
         )
     }
 
-    @Test("the default config lists exactly the fourteen visible tools")
+    @Test("the default config lists exactly the seventeen visible tools")
     func defaultListing() {
         let gateway = makeGateway(audit: AuditStore(fileURL: tempAuditURL()))
         let names = Set(gateway.listTools().map(\.name))
         #expect(
             names == [
-                "mail_search", "mail_read", "mail_draft",
-                "reminders_list", "reminders_due", "reminders_create", "reminders_complete",
-                "calendar_today", "calendar_list",
+                "mail_search", "mail_read", "mail_draft", "mail_mailboxes",
+                "reminders_list", "reminders_due", "reminders_create", "reminders_complete", "reminders_lists",
+                "calendar_today", "calendar_list", "calendar_calendars",
                 "messages_recent", "messages_search", "messages_history",
                 "contacts_lookup", "contacts_fields",
             ])
@@ -89,6 +89,27 @@ struct ToolGatewayTests {
         config.setAction("send", on: true, for: .messages)
         let gateway = makeGateway(config: config, audit: AuditStore(fileURL: tempAuditURL()))
         #expect(gateway.listTools().map(\.name).contains("messages_send"))
+    }
+
+    @Test("alias tools authorize on their action but execute their own operation")
+    func aliasExecution() async {
+        let executor = RecordingExecutor()
+        let audit = AuditStore(fileURL: tempAuditURL())
+        let gateway = makeGateway(executor: executor, audit: audit)
+        let result = await gateway.callTool(name: "mail_mailboxes", arguments: [:])
+        #expect(result.isError == false)
+        let calls = await executor.calls
+        #expect(calls.first?.app == .mail)
+        #expect(calls.first?.action == "mailboxes")
+        #expect(await audit.entries().first?.actionID == "mailboxes")
+
+        var config = HoneycrispConfig.default
+        config.setLevel(.off, for: .mail)
+        let gatedConfig = config
+        let gated = ToolGateway(
+            configProvider: { gatedConfig }, executor: executor, audit: audit, approvals: nil)
+        let denied = await gated.callTool(name: "mail_mailboxes", arguments: [:])
+        #expect(denied.isError)
     }
 
     @Test("an unknown tool errors without touching the executor or the audit log")

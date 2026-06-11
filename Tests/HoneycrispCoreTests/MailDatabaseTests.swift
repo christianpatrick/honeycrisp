@@ -134,7 +134,7 @@ struct MailDatabaseTests {
     func search() async throws {
         let fixture = try makeMailFixture()
         let database = MailDatabase(indexPath: fixture.index, mailRoot: fixture.root)
-        let hits = try await database.search(query: "Q3", mailbox: nil, limit: 10)
+        let hits = try await database.search(query: "Q3", mailbox: nil, from: nil, to: nil, since: nil, until: nil, unreadOnly: false, limit: 10)
         #expect(hits.count == 2)
         #expect(hits.first?.id == "102")
         #expect(hits.first?.date == Date(timeIntervalSince1970: 1_750_000_600))
@@ -142,10 +142,10 @@ struct MailDatabaseTests {
         #expect(hits.last?.from == "alex@studio.com")
         #expect(hits.last?.fromName == "Alex Rivera")
 
-        let bySender = try await database.search(query: "alex", mailbox: nil, limit: 10)
+        let bySender = try await database.search(query: "alex", mailbox: nil, from: nil, to: nil, since: nil, until: nil, unreadOnly: false, limit: 10)
         #expect(bySender.map(\.id) == ["101"])
 
-        let unread = try await database.search(query: "Lunch", mailbox: nil, limit: 10)
+        let unread = try await database.search(query: "Lunch", mailbox: nil, from: nil, to: nil, since: nil, until: nil, unreadOnly: false, limit: 10)
         #expect(unread.first?.read == false)
     }
 
@@ -153,7 +153,7 @@ struct MailDatabaseTests {
     func mailboxFilter() async throws {
         let fixture = try makeMailFixture()
         let database = MailDatabase(indexPath: fixture.index, mailRoot: fixture.root)
-        let inbox = try await database.search(query: "Q3", mailbox: "INBOX", limit: 10)
+        let inbox = try await database.search(query: "Q3", mailbox: "INBOX", from: nil, to: nil, since: nil, until: nil, unreadOnly: false, limit: 10)
         #expect(inbox.map(\.id) == ["101"])
     }
 
@@ -214,13 +214,85 @@ struct MailDatabaseTests {
         #expect(try await database.messageSummary(id: "999") == nil)
     }
 
+
+    @Test("no filters at all is browse: the latest mail, newest first")
+    func browse() async throws {
+        let fixture = try makeMailFixture()
+        let database = MailDatabase(indexPath: fixture.index, mailRoot: fixture.root)
+        let latest = try await database.search(
+            query: nil, mailbox: nil, from: nil, to: nil, since: nil, until: nil,
+            unreadOnly: false, limit: 10)
+        #expect(latest.map(\.id) == ["103", "102", "101"])
+    }
+
+    @Test("from, to, time bounds, and unread compose as filters")
+    func filters() async throws {
+        let fixture = try makeMailFixture()
+        let database = MailDatabase(indexPath: fixture.index, mailRoot: fixture.root)
+
+        let fromAlex = try await database.search(
+            query: nil, mailbox: nil, from: "alex", to: nil, since: nil, until: nil,
+            unreadOnly: false, limit: 10)
+        #expect(fromAlex.map(\.id) == ["101"])
+
+        let toMe = try await database.search(
+            query: nil, mailbox: nil, from: nil, to: "me@me.com", since: nil, until: nil,
+            unreadOnly: false, limit: 10)
+        #expect(toMe.map(\.id) == ["103", "101"])
+
+        let ccMaya = try await database.search(
+            query: nil, mailbox: nil, from: nil, to: "maya", since: nil, until: nil,
+            unreadOnly: false, limit: 10)
+        #expect(ccMaya.map(\.id) == ["102"])
+
+        let since = try await database.search(
+            query: nil, mailbox: nil, from: nil, to: nil,
+            since: Date(timeIntervalSince1970: 1_750_000_600), until: nil,
+            unreadOnly: false, limit: 10)
+        #expect(since.map(\.id) == ["103", "102"])
+
+        let until = try await database.search(
+            query: nil, mailbox: nil, from: nil, to: nil,
+            since: nil, until: Date(timeIntervalSince1970: 1_750_000_600),
+            unreadOnly: false, limit: 10)
+        #expect(until.map(\.id) == ["101"])
+
+        let unread = try await database.search(
+            query: nil, mailbox: nil, from: nil, to: nil, since: nil, until: nil,
+            unreadOnly: true, limit: 10)
+        #expect(unread.map(\.id) == ["103"])
+    }
+
+    @Test("mailboxes lists the decoded display names")
+    func mailboxNames() async throws {
+        let fixture = try makeMailFixture()
+        let database = MailDatabase(indexPath: fixture.index, mailRoot: fixture.root)
+        #expect(try await database.mailboxes() == ["INBOX", "Sent Messages"])
+    }
+
+    @Test("the to filter fails honestly when the recipients schema is unusable")
+    func toFilterWithoutRecipients() async throws {
+        let fixture = try makeMailFixture(recipients: .absent)
+        let database = MailDatabase(indexPath: fixture.index, mailRoot: fixture.root)
+        do {
+            _ = try await database.search(
+                query: nil, mailbox: nil, from: nil, to: "me@me.com", since: nil, until: nil,
+                unreadOnly: false, limit: 10)
+            Issue.record("expected a ToolFailure")
+        } catch let failure as ToolFailure {
+            #expect(failure.message.contains("to filter"))
+        } catch {
+            Issue.record("unexpected error type: \(error)")
+        }
+    }
+
     @Test("a missing index fails with the Full Disk Access sentence")
     func missingIndex() async {
         let database = MailDatabase(
             indexPath: "/nonexistent/Envelope Index",
             mailRoot: URL(fileURLWithPath: "/nonexistent"))
         do {
-            _ = try await database.search(query: "x", mailbox: nil, limit: 5)
+            _ = try await database.search(query: "x", mailbox: nil, from: nil, to: nil, since: nil, until: nil, unreadOnly: false, limit: 5)
             Issue.record("expected a ToolFailure")
         } catch let failure as ToolFailure {
             #expect(failure.message.contains("Full Disk Access"))

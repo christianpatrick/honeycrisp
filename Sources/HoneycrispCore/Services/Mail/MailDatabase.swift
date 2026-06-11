@@ -47,37 +47,102 @@ public actor MailDatabase: EnvelopeIndexReading {
 
     // MARK: - Search
 
-    public func search(query needle: String, mailbox: String?, limit: Int) async throws
-        -> [MailMessageSummary]
-    {
+    public func search(
+        query needle: String?, mailbox: String?, from: String?, to: String?,
+        since: Date?, until: Date?, unreadOnly: Bool, limit: Int
+    ) async throws -> [MailMessageSummary] {
         let db = try open()
-        let sql = """
+        var sql = """
             SELECT m.ROWID, m.conversation_id, s.subject, a.address, a.comment,
                    m.date_received, m."read", mb.url
             FROM messages m
             LEFT JOIN subjects s ON s.ROWID = m.subject
             LEFT JOIN addresses a ON a.ROWID = m.sender
             LEFT JOIN mailboxes mb ON mb.ROWID = m.mailbox
-            WHERE (s.subject LIKE '%' || ?1 || '%'
-                   OR a.address LIKE '%' || ?1 || '%'
-                   OR a.comment LIKE '%' || ?1 || '%')
-              AND (?2 IS NULL OR mb.url LIKE '%' || ?2 || '%')
+            WHERE 1 = 1
+            """
+        if needle != nil {
+            sql += """
+
+                  AND (s.subject LIKE '%' || ?1 || '%'
+                       OR a.address LIKE '%' || ?1 || '%'
+                       OR a.comment LIKE '%' || ?1 || '%')
+                """
+        }
+        sql += "\n  AND (?2 IS NULL OR mb.url LIKE '%' || ?2 || '%')"
+        if from != nil {
+            sql += "\n  AND (a.address LIKE '%' || ?4 || '%' OR a.comment LIKE '%' || ?4 || '%')"
+        }
+        if to != nil {
+            // Any recipient row, to or cc, through the probed schema.
+            guard let schema = probeRecipientsSchema(db) else {
+                throw ToolFailure(
+                    "The to filter is unavailable: this Mail version's recipients table is not recognizable."
+                )
+            }
+            sql += """
+
+                  AND EXISTS (
+                      SELECT 1 FROM recipients r
+                      JOIN addresses ra ON ra.ROWID = r.\(schema.addressColumn)
+                      WHERE r.\(schema.messageColumn) = m.ROWID
+                        AND (ra.address LIKE '%' || ?5 || '%' OR ra.comment LIKE '%' || ?5 || '%')
+                  )
+                """
+        }
+        if since != nil {
+            sql += "\n  AND m.date_received >= ?6"
+        }
+        if until != nil {
+            sql += "\n  AND m.date_received < ?7"
+        }
+        if unreadOnly {
+            sql += "\n  AND m.\"read\" = 0"
+        }
+        sql += """
+
             ORDER BY m.date_received DESC
             LIMIT ?3
             """
         var found: [MailMessageSummary] = []
         try query(db, sql, bind: { statement in
-            bindText(statement, 1, needle)
+            if let needle {
+                bindText(statement, 1, needle)
+            }
             if let mailbox {
                 bindText(statement, 2, mailbox)
             } else {
                 sqlite3_bind_null(statement, 2)
             }
             sqlite3_bind_int(statement, 3, Int32(max(0, limit)))
+            if let from {
+                bindText(statement, 4, from)
+            }
+            if let to {
+                bindText(statement, 5, to)
+            }
+            if let since {
+                sqlite3_bind_int64(statement, 6, Int64(since.timeIntervalSince1970))
+            }
+            if let until {
+                sqlite3_bind_int64(statement, 7, Int64(until.timeIntervalSince1970))
+            }
         }) { statement in
             found.append(Self.summaryRow(statement))
         }
         return found
+    }
+
+    public func mailboxes() async throws -> [String] {
+        let db = try open()
+        var names: Set<String> = []
+        try query(db, "SELECT url FROM mailboxes", bind: { _ in }) { statement in
+            let name = Self.mailboxName(fromURL: column(statement, 0))
+            if !name.isEmpty {
+                names.insert(name)
+            }
+        }
+        return names.sorted()
     }
 
     public func messageSummary(id: String) async throws -> MailMessageSummary? {

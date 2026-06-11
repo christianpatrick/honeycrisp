@@ -92,7 +92,11 @@ public struct MailComposeReceipt: Codable, Equatable, Sendable {
 
 /// The Mail domain seam the translator talks to.
 public protocol MailServicing: Sendable {
-    func search(query: String, mailbox: String?, limit: Int) async throws -> [MailMessageSummary]
+    func search(
+        query: String?, mailbox: String?, from: String?, to: String?,
+        since: Date?, until: Date?, unreadOnly: Bool, limit: Int
+    ) async throws -> [MailMessageSummary]
+    func mailboxes() async throws -> [String]
     func thread(id: String, limit: Int) async throws -> MailThread
     /// For reply resolution: who sent this message, and what was it called.
     func messageSummary(id: String) async throws -> MailMessageSummary?
@@ -105,7 +109,11 @@ public protocol MailServicing: Sendable {
 /// Sub-seams: the read side over the Envelope Index, and the compose side
 /// over Apple events.
 public protocol EnvelopeIndexReading: Sendable {
-    func search(query: String, mailbox: String?, limit: Int) async throws -> [MailMessageSummary]
+    func search(
+        query: String?, mailbox: String?, from: String?, to: String?,
+        since: Date?, until: Date?, unreadOnly: Bool, limit: Int
+    ) async throws -> [MailMessageSummary]
+    func mailboxes() async throws -> [String]
     func thread(id: String, limit: Int) async throws -> MailThread
     func messageSummary(id: String) async throws -> MailMessageSummary?
 }
@@ -144,10 +152,17 @@ public struct MailService: MailServicing {
         )
     }
 
-    public func search(query: String, mailbox: String?, limit: Int) async throws
-        -> [MailMessageSummary]
-    {
-        try await reader.search(query: query, mailbox: mailbox, limit: limit)
+    public func search(
+        query: String?, mailbox: String?, from: String?, to: String?,
+        since: Date?, until: Date?, unreadOnly: Bool, limit: Int
+    ) async throws -> [MailMessageSummary] {
+        try await reader.search(
+            query: query, mailbox: mailbox, from: from, to: to,
+            since: since, until: until, unreadOnly: unreadOnly, limit: limit)
+    }
+
+    public func mailboxes() async throws -> [String] {
+        try await reader.mailboxes()
     }
 
     public func thread(id: String, limit: Int) async throws -> MailThread {

@@ -99,7 +99,7 @@ public struct ToolGateway: Sendable {
         let start = ContinuousClock.now
         do {
             let result = try await executor.execute(
-                app: descriptor.app, action: descriptor.id, arguments: arguments)
+                app: descriptor.app, action: registered.executionAction, arguments: arguments)
             var rows = result.auditRows
             if outcome == .asked {
                 rows.append(AuditDetailRow(label: "You", value: "Allowed once"))
@@ -108,7 +108,7 @@ public struct ToolGateway: Sendable {
             await record(
                 AuditEntry(
                     app: descriptor.app,
-                    actionID: descriptor.id,
+                    actionID: registered.executionAction,
                     kind: descriptor.kind,
                     outcome: outcome,
                     action: result.auditAction,
@@ -122,7 +122,7 @@ public struct ToolGateway: Sendable {
             await record(
                 AuditEntry(
                     app: descriptor.app,
-                    actionID: descriptor.id,
+                    actionID: registered.executionAction,
                     kind: descriptor.kind,
                     outcome: outcome,
                     action: "Tried to \(descriptor.label.lowercased())",

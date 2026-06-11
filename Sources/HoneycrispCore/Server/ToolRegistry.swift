@@ -5,6 +5,10 @@ import MCP
 /// notification uses for it.
 public struct RegisteredTool: Sendable {
     public let descriptor: ActionDescriptor
+    /// What the executor runs. Usually the descriptor's id; alias tools
+    /// ride an existing action's permission switch but execute their own
+    /// operation, and the audit records this as what actually ran.
+    public let executionAction: String
     public let tool: Tool
     public let approvalSubtitle: String
     let approvalMessage: @Sendable (_ client: String, _ arguments: [String: Value]) -> String
@@ -31,10 +35,42 @@ public enum ToolRegistry {
         byName[name]
     }
 
-    public static let all: [RegisteredTool] = ActionCatalog.all.map(make)
+    public static let all: [RegisteredTool] =
+        ActionCatalog.all.map(make) + aliases.compactMap(makeAlias)
 
     private static let byName: [String: RegisteredTool] = Dictionary(
         uniqueKeysWithValues: all.map { ($0.tool.name, $0) })
+
+    /// Metadata reads that make a primary action usable (naming mailboxes,
+    /// lists, calendars) without their own permission rows: each rides the
+    /// named catalog action's switch and executes its own operation.
+    private static let aliases: [(name: String, app: AppID, action: String, executes: String)] = [
+        ("mail_mailboxes", .mail, "search", "mailboxes"),
+        ("reminders_lists", .reminders, "list", "lists"),
+        ("calendar_calendars", .calendar, "list", "calendars"),
+    ]
+
+    private static func makeAlias(
+        _ alias: (name: String, app: AppID, action: String, executes: String)
+    ) -> RegisteredTool? {
+        guard
+            let descriptor = ActionCatalog.descriptor(app: alias.app, action: alias.action),
+            let definition = definitions[alias.name]
+        else { return nil }
+        let tool = Tool(
+            name: alias.name,
+            description: definition.description,
+            inputSchema: definition.schema,
+            annotations: .init(readOnlyHint: true)
+        )
+        return RegisteredTool(
+            descriptor: descriptor,
+            executionAction: alias.executes,
+            tool: tool,
+            approvalSubtitle: definition.approvalSubtitle,
+            approvalMessage: { client, _ in "\(client) wants to \(descriptor.label.lowercased())." }
+        )
+    }
 
     // MARK: - Definitions
 
@@ -53,6 +89,7 @@ public enum ToolRegistry {
         let label = descriptor.label
         return RegisteredTool(
             descriptor: descriptor,
+            executionAction: descriptor.id,
             tool: tool,
             approvalSubtitle: definition.approvalSubtitle,
             approvalMessage: definition.approvalMessage
@@ -70,14 +107,30 @@ public enum ToolRegistry {
     private static let definitions: [String: Definition] = [
         "mail_search": Definition(
             description:
-                "Search Mail for messages matching a query. Returns thread and message summaries with ids you can pass to mail_read.",
+                "Find mail. Filters compose: keyword, sender, recipient, mailbox, a time window, and unread only all work alone or together, and no filters at all returns the latest mail. Returns summaries with ids for mail_read.",
             schema: schema(
                 properties: [
-                    "query": prop("string", "Words to look for in subjects, senders, and bodies."),
-                    "mailbox": prop("string", "Limit the search to one mailbox, like Inbox or Sent."),
+                    "query": prop("string", "Words to look for in subjects and senders."),
+                    "from": prop("string", "Only mail from this sender: an address or name fragment."),
+                    "to": prop("string", "Only mail addressed to this recipient (to or cc)."),
+                    "since": prop("string", "Only mail on or after this ISO 8601 time."),
+                    "until": prop("string", "Only mail before this ISO 8601 time."),
+                    "unread_only": prop("boolean", "Only unread mail."),
+                    "mailbox": prop("string", "Limit to one mailbox, like INBOX. mail_mailboxes lists the names."),
                     "limit": prop("integer", "The most results to return."),
-                ],
-                required: ["query"])
+                ])
+        ),
+        "mail_mailboxes": Definition(
+            description: "List the mailbox names Mail knows, for the mailbox filter.",
+            schema: schema(properties: [:])
+        ),
+        "reminders_lists": Definition(
+            description: "List the Reminders list names, for the list arguments.",
+            schema: schema(properties: [:])
+        ),
+        "calendar_calendars": Definition(
+            description: "List the calendar names, for the calendar arguments.",
+            schema: schema(properties: [:])
         ),
         "mail_read": Definition(
             description: "Read one Mail thread in full, oldest message first.",
@@ -135,11 +188,13 @@ public enum ToolRegistry {
         ),
         "reminders_list": Definition(
             description:
-                "List reminders, optionally from one list, optionally including completed ones.",
+                "List reminders, optionally from one list, within a due window, or including completed ones. Due this week is due_after now and due_before next week; overdue is due_before now.",
             schema: schema(
                 properties: [
-                    "list": prop("string", "The reminders list to read. Defaults to all lists."),
+                    "list": prop("string", "The reminders list to read. reminders_lists names them."),
                     "include_completed": prop("boolean", "Include completed reminders."),
+                    "due_after": prop("string", "Only reminders due on or after this ISO 8601 time."),
+                    "due_before": prop("string", "Only reminders due before this ISO 8601 time."),
                     "limit": prop("integer", "The most reminders to return."),
                 ])
         ),
@@ -174,11 +229,14 @@ public enum ToolRegistry {
             ])
         ),
         "calendar_list": Definition(
-            description: "List upcoming events over the next days, optionally from one calendar.",
+            description:
+                "List events in a window: the next days from now, or an explicit from and to range.",
             schema: schema(
                 properties: [
                     "days": prop("integer", "How many days ahead to look. Defaults to 7."),
-                    "calendar": prop("string", "Only this calendar, by name."),
+                    "from": prop("string", "Window start, ISO 8601. Defaults to now."),
+                    "to": prop("string", "Window end, ISO 8601. Defaults to from plus days."),
+                    "calendar": prop("string", "Only this calendar. calendar_calendars names them."),
                     "limit": prop("integer", "The most events to return."),
                 ])
         ),

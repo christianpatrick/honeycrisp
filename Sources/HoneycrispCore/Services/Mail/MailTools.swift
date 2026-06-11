@@ -16,6 +16,8 @@ public struct MailTools: Sendable {
         switch action {
         case "search":
             return try await search(arguments, defaultLimit: defaultLimit)
+        case "mailboxes":
+            return try await mailboxes()
         case "read":
             return try await read(arguments, defaultLimit: defaultLimit)
         case "draft":
@@ -63,26 +65,49 @@ public struct MailTools: Sendable {
     private func search(_ arguments: [String: Value], defaultLimit: Int) async throws
         -> ToolOutcome
     {
-        guard let query = string(arguments["query"]), !query.isEmpty else {
-            throw ToolFailure("mail_search needs a query.")
-        }
+        let query = string(arguments["query"]).flatMap { $0.isEmpty ? nil : $0 }
         let mailbox = string(arguments["mailbox"])
+        let from = string(arguments["from"])
+        let to = string(arguments["to"])
+        let since = try dateArg(arguments, "since")
+        let until = try dateArg(arguments, "until")
+        let unreadOnly = bool(arguments["unread_only"]) ?? false
         let limit = int(arguments["limit"]) ?? defaultLimit
-        let found = try await service.search(query: query, mailbox: mailbox, limit: limit)
-        var rows = [
-            AuditDetailRow(label: "Query", value: query),
-            AuditDetailRow(label: "Returned", value: "\(found.count) messages"),
-        ]
-        if let mailbox {
-            rows.insert(AuditDetailRow(label: "Mailbox", value: mailbox), at: 0)
-        } else {
-            rows.insert(AuditDetailRow(label: "Mailbox", value: "All Inboxes"), at: 0)
+        let found = try await service.search(
+            query: query, mailbox: mailbox, from: from, to: to,
+            since: since, until: until, unreadOnly: unreadOnly, limit: limit)
+
+        var rows = [AuditDetailRow(label: "Mailbox", value: mailbox ?? "All mailboxes")]
+        if let query { rows.append(AuditDetailRow(label: "Query", value: query)) }
+        if let from { rows.append(AuditDetailRow(label: "From", value: from)) }
+        if let to { rows.append(AuditDetailRow(label: "To", value: to)) }
+        if let since {
+            rows.append(AuditDetailRow(label: "Since", value: ToolDates.rowString(since)))
         }
+        if let until {
+            rows.append(AuditDetailRow(label: "Until", value: ToolDates.rowString(until)))
+        }
+        if unreadOnly { rows.append(AuditDetailRow(label: "Filter", value: "Unread only")) }
+        rows.append(AuditDetailRow(label: "Returned", value: "\(found.count) messages"))
+
+        let auditAction =
+            query.map { "Searched Mail for \u{201C}\($0)\u{201D}" }
+            ?? (unreadOnly ? "Checked unread mail" : "Read the latest mail")
         return ToolOutcome(
             content: try ToolJSON.encode(found),
-            auditAction: "Searched Mail for \u{201C}\(query)\u{201D}",
+            auditAction: auditAction,
             auditSummary: "Read \(found.count) message summaries. Nothing was modified.",
             auditRows: rows
+        )
+    }
+
+    private func mailboxes() async throws -> ToolOutcome {
+        let names = try await service.mailboxes()
+        return ToolOutcome(
+            content: try ToolJSON.encode(names),
+            auditAction: "Listed the mailboxes",
+            auditSummary: "Read \(names.count) mailbox names. Nothing was modified.",
+            auditRows: [AuditDetailRow(label: "Returned", value: "\(names.count) mailboxes")]
         )
     }
 
