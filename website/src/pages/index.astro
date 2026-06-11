@@ -1,0 +1,670 @@
+---
+import "../styles/global.css";
+import portrait from "../assets/christian.jpg";
+import honeycrispIcon from "../assets/marks/honeycrisp-icon.svg?raw";
+import mailIcon from "../assets/app-icons/mail.svg?raw";
+import remindersIcon from "../assets/app-icons/reminders.svg?raw";
+import calendarIcon from "../assets/app-icons/calendar.svg?raw";
+import messagesIcon from "../assets/app-icons/messages.svg?raw";
+import contactsIcon from "../assets/app-icons/contacts.svg?raw";
+
+const repo = "https://github.com/christianpatrick/honeycrisp";
+const base = import.meta.env.BASE_URL.endsWith("/")
+  ? import.meta.env.BASE_URL
+  : `${import.meta.env.BASE_URL}/`;
+const canonical = new URL(base, Astro.site);
+const ogImage = new URL(`${base}og.png`, Astro.site);
+const description =
+  "A fast, private, and transparent MCP server for your Apple apps. Honeycrisp gives any AI assistant native access to Mail, Reminders, Calendar, Messages, and Contacts, and everything stays on your Mac.";
+
+const apps = [
+  {
+    name: "Mail",
+    icon: mailIcon,
+    says: "Pull the thread you half remember, summarize it, draft a reply that sounds like you, and mark it read when you are done.",
+  },
+  {
+    name: "Reminders",
+    icon: remindersIcon,
+    says: "Check what is due today, capture the thing you just thought of, and tick items off in the conversation.",
+  },
+  {
+    name: "Calendar",
+    icon: calendarIcon,
+    says: "See what is on today, look ahead at the week, and put new events on the books.",
+  },
+  {
+    name: "Messages",
+    icon: messagesIcon,
+    says: "Catch up on the threads you missed and send a reply without reaching for your phone.",
+  },
+  {
+    name: "Contacts",
+    icon: contactsIcon,
+    says: "Look someone up, fix a misspelled name, or save a new face the moment it comes up.",
+  },
+];
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Honeycrisp, a fast and private MCP server for your Apple apps</title>
+    <meta name="description" content={description} />
+    <meta name="generator" content={Astro.generator} />
+    <meta name="theme-color" content="#FAF3E2" />
+    <link rel="canonical" href={canonical} />
+    <link rel="icon" href={`${base}favicon.svg`} type="image/svg+xml" />
+    <link rel="apple-touch-icon" href={`${base}apple-touch-icon.png`} />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="Honeycrisp" />
+    <meta property="og:title" content="Honeycrisp" />
+    <meta property="og:description" content="Your assistant, finally fluent in your Mac. A fast, private MCP server for Mail, Reminders, Calendar, Messages, and Contacts." />
+    <meta property="og:url" content={canonical} />
+    <meta property="og:image" content={ogImage} />
+    <meta name="twitter:card" content="summary_large_image" />
+  </head>
+  <body>
+    <main class="sheet">
+      <header class="mast">
+        <div class="left">
+          <span class="mark-icon" set:html={honeycrispIcon} />
+          <span class="wm">Honeycrisp<span class="red">.</span></span>
+        </div>
+        <div class="date hand">made with care<br />by Christian</div>
+      </header>
+
+      <h1 class="opening hand">Your assistant, finally<br />fluent in your <span class="red">Mac</span>.</h1>
+
+      <p class="lead">
+        Honeycrisp lets the AI you already use read a mail thread, check what is due
+        today, look at the week ahead, fire off a quick reply, or pull up a contact,
+        all in an instant and all on your own machine.
+      </p>
+
+      <p>
+        It is a small menu bar app with a bundled command line bridge for any MCP
+        client. It is fast, it is genuinely private, and it works with whatever
+        assistant you already have. Here is the short version.
+      </p>
+
+      <div class="highlights">
+        <div class="hl-label hand">the short version</div>
+        <ul>
+          <li>
+            <b>It is fast and native.</b> It speaks to the system frameworks the apps
+            already use, so requests come back right away with real, structured data
+            instead of scraped text.
+          </li>
+          <li>
+            <b>It is completely private.</b>
+            <span class="mark">Everything stays on your Mac. Nothing is uploaded, ever,</span>
+            and the only record kept is a local activity list you can clear. Honeycrisp
+            only sees the one thing you ask for, the moment you ask for it.
+          </li>
+          <li>
+            <b>It works with any assistant.</b> Any MCP client can use it, so you are
+            not locked into a single app or vendor.
+          </li>
+        </ul>
+      </div>
+
+      <p>
+        If you are curious how it works, most tools like this drive your apps with
+        AppleScript, spinning up a process and parsing loose text for every request.
+        Honeycrisp speaks to the system frameworks directly instead, so the same
+        request that used to crawl now comes back in
+        <span class="circ">a blink<svg viewBox="0 0 120 56" fill="none" aria-hidden="true"><path d="M61 5 C92 4 110 17 108 30 C106 47 72 53 44 50 C16 47 9 31 16 19 C22 9 41 5 62 6" stroke="#E0A23A" stroke-width="2.4" stroke-linecap="round"/></svg></span>,
+        with nothing brittle left to break.
+      </p>
+      <p class="aside hand">
+        <svg class="aside-arrow" viewBox="0 0 46 18" aria-hidden="true"><path d="M44 9 C32 1.5 17 1.5 5 9 M12 3.5 L4.5 9 L13 13.5" stroke="#E0A23A" stroke-width="2.2" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        no osascript. not once.
+      </p>
+
+      <p>
+        There is no account, no cloud, and no telemetry. The only thing Honeycrisp
+        reaches out for is its own updates: it checks a version file so it can tell
+        you when a new release is ready, it sends nothing about you, and you can
+        switch it off in Settings. Everything else works with your Mac offline,
+        because the only machine involved is the one in front of you.
+      </p>
+
+      <p>
+        Honeycrisp speaks to five of the apps I live in every day. Each one is a
+        real, first-class connection rather than a thin wrapper.
+      </p>
+
+      <ul class="apps">
+        {
+          apps.map((app) => (
+            <li>
+              <span class="ico" set:html={app.icon} />
+              <div class="txt">
+                <span class="nm">{app.name}</span>
+                <span class="says">{app.says}</span>
+              </div>
+            </li>
+          ))
+        }
+      </ul>
+
+      <p>
+        That is the whole of it, at least for today. If it sounds useful, it takes
+        about a minute to get going.
+      </p>
+
+      <div class="try">
+        <div class="lbl hand">want to try it?</div>
+        <a class="tape" id="download-link" href={`${repo}/releases/latest`}>
+          <svg class="dl" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3.5 V14.5 M7 10.5 L12 15.5 L17 10.5 M4.5 17.5 V19 a1.5 1.5 0 0 0 1.5 1.5 H18 a1.5 1.5 0 0 0 1.5-1.5 V17.5" stroke="currentColor" stroke-width="1.9" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          <span>Download Honeycrisp</span>
+        </a>
+        <div class="dl-note" id="download-note">The latest release, for macOS 15 or later.</div>
+      </div>
+
+      <p>
+        It comes straight from the <a href={`${repo}/releases`}>GitHub releases page</a>,
+        signed and notarized. Unzip it, drop Honeycrisp in your Applications folder,
+        and point any MCP client at the bundled <code>honeycrisp</code> command.
+        <a href={`${repo}#install`}>The README walks through the setup</a>, and macOS
+        asks before Honeycrisp touches anything.
+      </p>
+
+      <p>
+        Honeycrisp is free and open source under the
+        <a href={`${repo}/blob/main/LICENSE`}>MIT license</a>. It is still early, and
+        I am adding to it with care. I hope it makes your Mac feel a little more like
+        yours.
+      </p>
+
+      <div class="rule" aria-hidden="true">
+        <span class="line"></span>
+        <svg class="seedb" viewBox="-13 -16 26 33"><path d="M0,-14 C8,-14 11.5,-5 6,6 C4,10 2,13 0,16 C-2,13 -4,10 -6,6 C-11.5,-5 -8,-14 0,-14 Z" fill="#C5453A"/></svg>
+        <span class="line"></span>
+      </div>
+
+      <h2 class="break hand">I built this because I was<br />tired of <span class="red">waiting</span>.</h2>
+
+      <div class="about">
+        <figure class="polaroid">
+          <img src={portrait.src} width="460" height="460" alt="Christian, the maker of Honeycrisp, smiling" loading="lazy" />
+          <figcaption class="cap hand">that's me</figcaption>
+        </figure>
+        <div class="about-text">
+          <p>
+            I'm Christian. I love the Apple apps and have built years of little
+            workflows to get the most out of them, so when an AI assistant became
+            part of my every day, I wanted that same power in the apps I know and
+            love.
+          </p>
+          <p>
+            I tried the options that already existed, and they let me down. Reading
+            and updating data was slow and would often lock up an app entirely, and
+            I never had a clear view of what those tools could actually see or do on
+            my behalf.
+          </p>
+          <p>
+            So I built the helper I wanted: fast, private, and transparent. It keeps
+            a local-only log of every action it takes, and it lets me fine-tune
+            permissions with a single click. And I love eating a good Honeycrisp
+            apple. Now my Mac seems to enjoy them too.
+          </p>
+        </div>
+      </div>
+
+      <div class="sign hand">Thank you for reading,<br />Christian</div>
+      <p class="ps">
+        P.S. If you want another app supported,
+        <a href={`${repo}/issues/new`}>open an issue on GitHub</a>. I am keeping a list.
+      </p>
+      <p class="ps">
+        P.P.S. Honeycrisp never uploads your data, but a conversation is only as
+        private as the model on the other end. Pair it with a local model in
+        something like Ollama or LM Studio and nothing ever leaves your Mac.
+      </p>
+
+      <footer class="foot">
+        <p class="pun hand">
+          Built with <span class="red">apples</span>, not AppleScript, by
+          <a href="https://mynameischristian.com/">Christian</a>.
+        </p>
+        <p class="legal">
+          Honeycrisp is an independent project and is not affiliated with, endorsed
+          by, or sponsored by Apple Inc. Apple, macOS, and the names of Apple apps
+          are trademarks of Apple Inc.
+        </p>
+      </footer>
+    </main>
+
+    <script>
+      import { describeRelease } from "../scripts/latest-release.js";
+
+      // Upgrade the static releases/latest link to a direct download of the
+      // current zip. On any failure the static link keeps working as is.
+      const link = document.getElementById("download-link");
+      const note = document.getElementById("download-note");
+      try {
+        const response = await fetch(
+          "https://api.github.com/repos/christianpatrick/honeycrisp/releases/latest",
+          { headers: { Accept: "application/vnd.github+json" } },
+        );
+        if (response.ok) {
+          const release = describeRelease(await response.json());
+          if (release && link instanceof HTMLAnchorElement) {
+            link.href = release.url;
+            if (note) note.textContent = `${release.version}, for macOS 15 or later.`;
+          }
+        }
+      } catch {
+        // The letter reads the same without the version label.
+      }
+    </script>
+
+    <style>
+      .sheet {
+        max-width: 660px;
+        margin: 0 auto;
+        padding: 64px 28px 72px;
+        position: relative;
+        z-index: 1;
+      }
+
+      .hand {
+        font-family: var(--font-hand);
+        font-weight: 600;
+        line-height: 1.15;
+        color: var(--hc-ink);
+      }
+      .red {
+        color: var(--hc-red);
+      }
+
+      a {
+        color: var(--hc-red);
+        text-decoration-thickness: 1px;
+        text-underline-offset: 3px;
+      }
+
+      code {
+        font-family: var(--font-mono);
+        font-size: 0.82em;
+        background: rgba(255, 253, 246, 0.7);
+        border: 1px solid var(--hc-paper-edge);
+        border-radius: 5px;
+        padding: 1px 6px 2px;
+      }
+
+      /* masthead */
+      .mast {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 16px;
+        border-bottom: 1.5px solid var(--hc-seed);
+        padding-bottom: 14px;
+        margin-bottom: 44px;
+      }
+      .mast .left {
+        display: flex;
+        align-items: center;
+        gap: 13px;
+      }
+      .mark-icon :global(svg) {
+        width: 38px;
+        height: 38px;
+        display: block;
+      }
+      .wm {
+        font-family: var(--font-sans);
+        font-weight: 600;
+        font-size: 25px;
+        letter-spacing: -0.03em;
+        line-height: 1;
+      }
+      .date {
+        font-size: 21px;
+        font-weight: 600;
+        color: var(--hc-ink-soft);
+        text-align: right;
+        white-space: nowrap;
+        transform: rotate(-2deg);
+      }
+
+      .opening {
+        font-weight: 700;
+        font-size: clamp(40px, 8vw, 58px);
+        line-height: 1.05;
+        margin: 0 0 26px;
+        letter-spacing: 0.5px;
+      }
+      .break {
+        font-weight: 700;
+        font-size: clamp(32px, 6vw, 46px);
+        line-height: 1.08;
+        letter-spacing: 0.5px;
+        margin: 6px 0 26px;
+      }
+
+      p {
+        margin: 0 0 26px;
+        text-wrap: pretty;
+      }
+      .lead {
+        font-size: 22px;
+      }
+
+      /* circle annotation */
+      .circ {
+        position: relative;
+        display: inline-block;
+        white-space: nowrap;
+      }
+      .circ svg {
+        position: absolute;
+        left: -9%;
+        top: -26%;
+        width: 118%;
+        height: 162%;
+        overflow: visible;
+        pointer-events: none;
+      }
+
+      .aside {
+        font-size: 25px;
+        color: var(--hc-seed);
+        text-align: right;
+        transform: rotate(-1.5deg);
+        margin: -14px 0 30px;
+      }
+      .aside-arrow {
+        width: 40px;
+        height: 16px;
+        vertical-align: -2px;
+        margin-right: 6px;
+      }
+
+      /* highlights */
+      .highlights {
+        margin: 8px 0 34px;
+        padding: 22px 26px 24px;
+        border: 1.5px solid #e4d6b8;
+        border-radius: 15px;
+        background: rgba(255, 253, 246, 0.55);
+        position: relative;
+      }
+      .hl-label {
+        position: absolute;
+        top: -15px;
+        left: 22px;
+        white-space: nowrap;
+        background: var(--hc-paper);
+        padding: 0 10px;
+        font-weight: 700;
+        font-size: 24px;
+        color: var(--hc-seed);
+        transform: rotate(-1.5deg);
+      }
+      .highlights ul {
+        list-style: none;
+        margin: 0;
+        padding: 0;
+      }
+      .highlights li {
+        position: relative;
+        padding: 11px 0 11px 30px;
+        font-size: 18px;
+        line-height: 1.52;
+      }
+      .highlights li + li {
+        border-top: 1px dashed #e6d9be;
+      }
+      .highlights li::before {
+        content: "";
+        position: absolute;
+        left: 2px;
+        top: 16px;
+        width: 13px;
+        height: 16px;
+        background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='-13 -16 26 33'%3E%3Cpath d='M0,-14 C8,-14 11.5,-5 6,6 C4,10 2,13 0,16 C-2,13 -4,10 -6,6 C-11.5,-5 -8,-14 0,-14 Z' fill='%23C5453A'/%3E%3C/svg%3E")
+          center / contain no-repeat;
+        transform: rotate(6deg);
+      }
+      .highlights b {
+        font-family: var(--font-sans);
+        font-weight: 600;
+        font-size: 0.9em;
+        color: var(--hc-ink);
+      }
+      .mark {
+        background: linear-gradient(180deg, transparent 56%, var(--hc-highlighter) 56%);
+        padding: 0 2px;
+      }
+
+      /* apps list */
+      .apps {
+        list-style: none;
+        margin: 8px 0 30px;
+        padding: 0;
+      }
+      .apps li {
+        display: flex;
+        align-items: flex-start;
+        gap: 16px;
+        padding: 15px 0;
+        border-bottom: 1px dashed #d8c9a6;
+      }
+      .apps li:last-child {
+        border-bottom: 0;
+      }
+      .ico {
+        width: 42px;
+        height: 42px;
+        border-radius: 22.4%;
+        flex: none;
+        margin-top: 3px;
+        position: relative;
+        box-shadow: 0 1px 2px rgba(60, 40, 20, 0.12);
+      }
+      .ico::after {
+        content: "";
+        position: absolute;
+        inset: 0;
+        border-radius: inherit;
+        box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.06);
+      }
+      .ico :global(svg) {
+        width: 100%;
+        height: 100%;
+        display: block;
+      }
+      .txt {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+      }
+      .nm {
+        font-family: var(--font-sans);
+        font-weight: 600;
+        font-size: 17px;
+        letter-spacing: -0.01em;
+        line-height: 1;
+      }
+      .says {
+        color: var(--hc-ink-soft);
+        font-size: 17.5px;
+        line-height: 1.5;
+      }
+
+      /* the taped download slip */
+      .try {
+        margin: 40px 0 30px;
+      }
+      .lbl {
+        font-size: 28px;
+        font-weight: 700;
+        margin-bottom: 16px;
+      }
+      .tape {
+        display: inline-flex;
+        align-items: center;
+        gap: 10px;
+        position: relative;
+        background: #fffdf6;
+        border: 1px solid var(--hc-paper-edge);
+        padding: 16px 22px;
+        transform: rotate(-1.4deg);
+        box-shadow: var(--shadow-md);
+        font-family: var(--font-sans);
+        font-weight: 600;
+        font-size: 17px;
+        color: var(--hc-ink);
+        text-decoration: none;
+      }
+      .tape::before,
+      .tape::after {
+        content: "";
+        position: absolute;
+        width: 64px;
+        height: 22px;
+        background: rgba(224, 162, 58, 0.32);
+        top: -10px;
+      }
+      .tape::before {
+        left: 14px;
+        transform: rotate(-5deg);
+      }
+      .tape::after {
+        right: 14px;
+        transform: rotate(4deg);
+      }
+      .dl {
+        width: 20px;
+        height: 20px;
+        color: var(--hc-red);
+        flex: none;
+      }
+      @media (prefers-reduced-motion: no-preference) {
+        .tape {
+          transition: transform 0.25s var(--ease-soft), box-shadow 0.25s var(--ease-soft);
+        }
+        .tape:hover {
+          transform: rotate(-1.4deg) translateY(-3px);
+          box-shadow: 2px 8px 18px rgba(80, 60, 20, 0.18);
+        }
+      }
+      .dl-note {
+        margin-top: 14px;
+        font-size: 16px;
+        color: var(--hc-ink-soft);
+        font-style: italic;
+      }
+
+      .rule {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 14px;
+        margin: 50px 0;
+        color: var(--hc-seed);
+      }
+      .seedb {
+        width: 22px;
+        height: 26px;
+      }
+      .rule .line {
+        height: 1px;
+        width: 80px;
+        background: var(--hc-seed);
+        opacity: 0.4;
+      }
+
+      /* about the maker */
+      .about {
+        display: grid;
+        grid-template-columns: auto 1fr;
+        gap: 32px;
+        align-items: start;
+        margin: 4px 0 30px;
+      }
+      @media (max-width: 560px) {
+        .about {
+          grid-template-columns: 1fr;
+          gap: 22px;
+          justify-items: center;
+        }
+      }
+      .polaroid {
+        width: 150px;
+        margin: 0;
+        background: #fff;
+        padding: 10px 10px 0;
+        border: 1px solid var(--hc-paper-edge);
+        box-shadow: 3px 6px 18px rgba(80, 60, 20, 0.18);
+        transform: rotate(-3deg);
+      }
+      .polaroid img {
+        width: 130px;
+        height: 130px;
+        display: block;
+        object-fit: cover;
+        border-radius: 3px;
+      }
+      .cap {
+        font-size: 20px;
+        color: var(--hc-seed);
+        text-align: center;
+        line-height: 1.1;
+        padding: 8px 2px 9px;
+      }
+      .about-text {
+        padding-top: 2px;
+      }
+      .about-text p {
+        font-size: 18px;
+        line-height: 1.62;
+        margin: 0 0 15px;
+      }
+      .about-text p:last-child {
+        margin-bottom: 0;
+      }
+
+      .sign {
+        font-size: 30px;
+        font-weight: 700;
+        margin-top: 8px;
+      }
+      .ps {
+        font-size: 17px;
+        color: var(--hc-ink-soft);
+        font-style: italic;
+        margin: 20px 0 0;
+      }
+
+      /* footer */
+      .foot {
+        margin-top: 64px;
+        padding-top: 26px;
+        border-top: 1px dashed #d8c9a6;
+        text-align: center;
+      }
+      .pun {
+        font-size: 26px;
+        margin: 0 0 14px;
+      }
+      .pun a {
+        color: var(--hc-red);
+      }
+      .legal {
+        font-size: 13.5px;
+        color: var(--hc-ink-faint);
+        font-style: italic;
+        line-height: 1.55;
+        max-width: 520px;
+        margin: 0 auto;
+      }
+    </style>
+  </body>
+</html>

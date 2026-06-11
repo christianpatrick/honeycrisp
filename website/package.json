@@ -1,0 +1,20 @@
+{
+  "name": "honeycrisp-website",
+  "version": "0.0.0",
+  "private": true,
+  "description": "The Honeycrisp letter, the marketing site. Not part of the app; nothing under Sources/ or scripts/ reads it.",
+  "license": "MIT",
+  "type": "module",
+  "engines": {
+    "node": ">=22.12.0"
+  },
+  "scripts": {
+    "dev": "astro dev",
+    "build": "astro build",
+    "preview": "astro preview",
+    "test": "node --test"
+  },
+  "devDependencies": {
+    "astro": "6.4.6"
+  }
+}

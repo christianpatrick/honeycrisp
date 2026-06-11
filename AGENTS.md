@@ -49,8 +49,16 @@ Honeycrisp is a local MCP server for macOS that gives any MCP client fast, priva
 - Privacy is phrased concretely (on your Mac, nothing uploaded, a local activity list you can clear), never as a buzzword.
 - The shippable artwork lives in assets/. The UI direction is System: stock macOS materials, SF Pro, with Honeycrisp red #C5453A as the accent and the hand-built app icons. The wordmark is Honeycrisp in Sora semibold at -0.03em tracking with a brand-red period.
 
+## Website
+
+- website/ is the marketing site (HC-039): a self-contained Astro static build of the letter design, deployed to GitHub Pages at https://christianpatrick.github.io/honeycrisp/ by .github/workflows/website.yml. The workflow is path-filtered to website/**, builds and tests on pull requests, and deploys only from main. Pages must be set to deploy from GitHub Actions in the repository settings; the workflow attempts to enable that itself.
+- The site never touches the app. No SwiftPM target, packaging script, or release asset reads website/, and semantic-release ignores the website commit scope (releaseRules in .releaserc.json). Use scope website for site work, so a feat(website) commit deploys the site and never cuts an app release.
+- README.md is the source of truth for site copy, and the voice rules above apply to every page. The one install path is the latest GitHub release: the page links releases/latest statically and a single client-side GitHub API call upgrades it to the direct zip, failing silently back to the static link. The site carries no analytics, matching the product's promise, and never mentions Homebrew because Honeycrisp is not in it.
+- Fonts (Caveat, Newsreader, Sora, Geist Mono) are vendored OFL woff2 files in website/src/assets/fonts with their license, so the site makes no Google Fonts requests at runtime. Brand SVGs are copied from assets/, which stays canonical; sync the copies by hand when the artwork changes.
+
 ## Build and test
 
 - `swift build` and `swift test` from the repo root.
+- Website: `npm ci`, `npm run build`, then `npm test` inside website/ (the dist assertions want a build first).
 - Integration tests: `HONEYCRISP_INTEGRATION=1 swift test` (first run prompts for TCC grants).
 - App bundle: scripts/package-app.swift run with the swift command.
