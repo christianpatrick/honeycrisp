@@ -26,7 +26,7 @@ The first gated run will make macOS ask for the relevant permissions. That is ex
 
 Read [AGENTS.md](AGENTS.md) first. The short version:
 
-- Spec first. Every task starts as a spec in [.spec/](.spec/README.md) before any code.
+- Spec first. Every task starts as a spec in [.specs/](.specs/README.md) before any code.
 - Test-driven. The failing test comes first, you watch it fail, then you make it pass.
 - Meaningful tests only. Behavior through public API, system frameworks behind protocols with fakes.
 - [Conventional commits](https://www.conventionalcommits.org/en/v1.0.0/).

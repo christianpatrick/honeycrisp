@@ -6,6 +6,3 @@ DerivedData/
 dist/
 .env
 
-# Brand assets stay local; the whole the spec tree is never
-# committed. Provenance lives in AGENTS.md.
-
