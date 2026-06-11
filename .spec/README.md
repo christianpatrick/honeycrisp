@@ -61,3 +61,7 @@ Checkable statements that make this task done.
 | HC-023 | Calendar service | done |
 | HC-024 | Whole-segment tap targets | done |
 | HC-025 | Remove the misleading messages_draft action | done |
+| HC-026 | Messages query dimensions: history, time bounds, unread filter | done |
+| HC-027 | Mail query dimensions: filters-first search and mailbox discovery | done |
+| HC-028 | Reminders query dimensions: due window and list discovery | done |
+| HC-029 | Calendar query dimensions: explicit range and calendar discovery | done |
