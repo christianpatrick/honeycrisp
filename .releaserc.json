@@ -2,7 +2,12 @@
   "branches": ["main"],
   "tagFormat": "v${version}",
   "plugins": [
-    "@semantic-release/commit-analyzer",
+    [
+      "@semantic-release/commit-analyzer",
+      {
+        "releaseRules": [{ "scope": "website", "release": false }]
+      }
+    ],
     "@semantic-release/release-notes-generator",
     [
       "@semantic-release/exec",

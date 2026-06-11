@@ -1,0 +1,57 @@
+/* Honeycrisp design system tokens, from the design kit, plus the page
+   ground. Warm paper, real ink, soft brown shadows, never grey. */
+
+@import "./fonts.css";
+
+:root {
+  /* brand: the fruit */
+  --hc-red: #c5453a;
+  --hc-seed: #5e4029;
+
+  /* paper and ink */
+  --hc-paper: #faf3e2;
+  --hc-paper-edge: #e7dbbe;
+  --hc-ink: #2b2620;
+  --hc-ink-soft: #6e6555;
+  --hc-ink-faint: #a89e8c;
+
+  --hc-highlighter: rgba(224, 162, 58, 0.42);
+
+  /* type voices */
+  --font-hand: "Caveat", "Bradley Hand", cursive;
+  --font-serif: "Newsreader", Georgia, "Times New Roman", serif;
+  --font-sans: "Sora", system-ui, -apple-system, sans-serif;
+
+  /* shadows: warm brown, soft, low */
+  --shadow-md: 2px 4px 12px rgba(80, 60, 20, 0.14);
+
+  --ease-soft: cubic-bezier(0.22, 0.61, 0.36, 1);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: var(--hc-paper);
+  color: var(--hc-ink);
+  font-family: var(--font-serif);
+  font-size: 20px;
+  line-height: 1.72;
+  -webkit-font-smoothing: antialiased;
+  position: relative;
+  overflow-x: hidden;
+}
+
+/* paper grain */
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  opacity: 0.05;
+  mix-blend-mode: multiply;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
