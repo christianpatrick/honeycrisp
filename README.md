@@ -1,10 +1,7 @@
-<!-- Honeycrisp README. The assets/ folder is committed alongside this file (see bottom note). -->
+<h1 align="center">Honeycrisp</h1>
 
 <p align="center">
-  <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="assets/banner/letter-dark.png">
-    <img alt="Honeycrisp: your assistant, finally fluent in your Mac." src="assets/banner/letter-light.png" width="100%">
-  </picture>
+  Your assistant, finally fluent in your Mac.
 </p>
 
 <p align="center">
@@ -100,7 +97,7 @@ Either way, every request flows through the one app you granted access to, shows
 
 ## Configuration
 
-By default Honeycrisp exposes all four apps in read and write mode. You can narrow that down with flags on the `serve` command or in a small config file.
+By default Honeycrisp exposes all five apps in read and write mode. You can narrow that down with flags on the `serve` command or in a small config file.
 
 | Option | Default | What it does |
 | --- | --- | --- |
@@ -137,21 +134,3 @@ Honeycrisp is free and open source under the [MIT license](LICENSE). Use it, for
 <p align="center">
   <sub>Made with care by Christian.</sub>
 </p>
-
-<!--
-  Assets this README expects (committed alongside the file):
-    assets/banner/letter-light.png     hero banner, light theme
-    assets/banner/letter-dark.png      hero banner, dark theme
-    assets/app-icons/mail.svg
-    assets/app-icons/reminders.svg
-    assets/app-icons/messages.svg
-    assets/app-icons/contacts.svg
-
-  Prefer a different banner? assets/banner/ also has:
-    gradient-light/dark.png   the honey-to-red blush poster
-    minimal-light/dark.png    the understated icon + wordmark mark
-  Swap the two srcset/src paths in the <picture> block at the top.
-
-  Placeholders left to fill before the first public release: the Homebrew
-  tap, and the one personal sentence in "Why I built this".
--->
