@@ -1,12 +1,15 @@
 ---
 import "../styles/global.css";
 import portrait from "../assets/christian.jpg";
-import honeycrispIcon from "../assets/marks/honeycrisp-icon.svg?raw";
-import mailIcon from "../assets/app-icons/mail.svg?raw";
-import remindersIcon from "../assets/app-icons/reminders.svg?raw";
-import calendarIcon from "../assets/app-icons/calendar.svg?raw";
-import messagesIcon from "../assets/app-icons/messages.svg?raw";
-import contactsIcon from "../assets/app-icons/contacts.svg?raw";
+// The brand artwork is the app's own: these imports reach out of website/
+// into the repository's assets/ folder, the single source of truth.
+import favicon from "../../../assets/marks/honeycrisp-icon.svg";
+import honeycrispIcon from "../../../assets/marks/honeycrisp-icon.svg?raw";
+import mailIcon from "../../../assets/app-icons/mail.svg?raw";
+import remindersIcon from "../../../assets/app-icons/reminders.svg?raw";
+import calendarIcon from "../../../assets/app-icons/calendar.svg?raw";
+import messagesIcon from "../../../assets/app-icons/messages.svg?raw";
+import contactsIcon from "../../../assets/app-icons/contacts.svg?raw";
 
 const repo = "https://github.com/christianpatrick/honeycrisp";
 const base = import.meta.env.BASE_URL.endsWith("/")
@@ -56,7 +59,7 @@ const apps = [
     <meta name="generator" content={Astro.generator} />
     <meta name="theme-color" content="#FAF3E2" />
     <link rel="canonical" href={canonical} />
-    <link rel="icon" href={`${base}favicon.svg`} type="image/svg+xml" />
+    <link rel="icon" href={favicon.src} type="image/svg+xml" />
     <link rel="apple-touch-icon" href={`${base}apple-touch-icon.png`} />
     <meta property="og:type" content="website" />
     <meta property="og:site_name" content="Honeycrisp" />

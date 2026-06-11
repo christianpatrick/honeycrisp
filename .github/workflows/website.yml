@@ -9,10 +9,12 @@ on:
     branches: [main]
     paths:
       - "website/**"
+      - "assets/**"
       - ".github/workflows/website.yml"
   pull_request:
     paths:
       - "website/**"
+      - "assets/**"
       - ".github/workflows/website.yml"
   workflow_dispatch:
 
