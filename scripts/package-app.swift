@@ -57,20 +57,16 @@ try fileManager.createDirectory(at: resources, withIntermediateDirectories: true
 try fileManager.copyItem(at: appExecutable, to: macOS.appendingPathComponent("Honeycrisp"))
 try fileManager.copyItem(at: cliExecutable, to: macOS.appendingPathComponent("honeycrisp-cli"))
 
-// 4. Brand resources from the committed artwork in assets/ (the product
-// spec itself is never committed and packaging must not depend on it).
+// 4. Brand resources from the committed artwork in assets/.
 // Keys are the resource names the app loads; values are repo paths.
 let artwork: [String: String] = [
     "icon.svg": "assets/marks/honeycrisp-icon.svg",
     "glyph-black.svg": "assets/marks/honeycrisp-glyph-black.svg",
-    "glyph-white.svg": "assets/marks/honeycrisp-glyph-white.svg",
     "mail.svg": "assets/app-icons/mail.svg",
     "reminders.svg": "assets/app-icons/reminders.svg",
     "messages.svg": "assets/app-icons/messages.svg",
     "contacts.svg": "assets/app-icons/contacts.svg",
     "calendar.svg": "assets/app-icons/calendar.svg",
-    "seed.svg": "assets/marks/seed.svg",
-    "star.svg": "assets/marks/star.svg",
 ]
 for (name, path) in artwork {
     let source = root.appendingPathComponent(path)
