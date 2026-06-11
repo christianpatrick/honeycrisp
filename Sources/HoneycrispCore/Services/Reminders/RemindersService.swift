@@ -39,7 +39,12 @@ public struct NewReminder: Codable, Equatable, Sendable {
 
 /// The Reminders domain seam. EKRemindersService is the real one.
 public protocol RemindersServicing: Sendable {
-    func reminders(list: String?, includeCompleted: Bool, limit: Int) async throws -> [Reminder]
+    /// A due window excludes reminders without a due date: a window is a
+    /// question about dates.
+    func reminders(
+        list: String?, includeCompleted: Bool, dueAfter: Date?, dueBefore: Date?, limit: Int
+    ) async throws -> [Reminder]
+    func listNames() async throws -> [String]
     /// Incomplete reminders due today or overdue.
     func dueToday(limit: Int) async throws -> [Reminder]
     func create(_ new: NewReminder) async throws -> Reminder

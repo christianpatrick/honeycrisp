@@ -7,6 +7,8 @@ private actor FakeRemindersService: RemindersServicing {
     struct ListCall: Sendable, Equatable {
         let list: String?
         let includeCompleted: Bool
+        let dueAfter: Date?
+        let dueBefore: Date?
         let limit: Int
     }
 
@@ -21,9 +23,21 @@ private actor FakeRemindersService: RemindersServicing {
     func setListResult(_ reminders: [Reminder]) { listResult = reminders }
     func setDueResult(_ reminders: [Reminder]) { dueResult = reminders }
 
-    func reminders(list: String?, includeCompleted: Bool, limit: Int) async throws -> [Reminder] {
-        listCalls.append(ListCall(list: list, includeCompleted: includeCompleted, limit: limit))
+    func reminders(
+        list: String?, includeCompleted: Bool, dueAfter: Date?, dueBefore: Date?, limit: Int
+    ) async throws -> [Reminder] {
+        listCalls.append(
+            ListCall(
+                list: list, includeCompleted: includeCompleted,
+                dueAfter: dueAfter, dueBefore: dueBefore, limit: limit))
         return listResult
+    }
+
+    private(set) var listNameCalls = 0
+
+    func listNames() async throws -> [String] {
+        listNameCalls += 1
+        return ["Inbox", "Family"]
     }
 
     func dueToday(limit: Int) async throws -> [Reminder] {
@@ -68,7 +82,9 @@ struct RemindersToolsTests {
             action: "list", arguments: [:], config: config(list: "Personal", limit: 7))
         #expect(
             await service.listCalls == [
-                .init(list: "Personal", includeCompleted: false, limit: 7)
+                .init(
+                    list: "Personal", includeCompleted: false,
+                    dueAfter: nil, dueBefore: nil, limit: 7)
             ])
         let decoded = try ToolJSON.decode([Reminder].self, from: outcome.content)
         #expect(decoded == [dentist])
@@ -83,7 +99,10 @@ struct RemindersToolsTests {
             action: "list",
             arguments: ["list": "Work", "include_completed": true, "limit": 3],
             config: config(list: "Personal", limit: 20))
-        #expect(await service.listCalls == [.init(list: "Work", includeCompleted: true, limit: 3)])
+        #expect(
+            await service.listCalls == [
+                .init(list: "Work", includeCompleted: true, dueAfter: nil, dueBefore: nil, limit: 3)
+            ])
     }
 
     @Test("due uses the mock's sentence and notes that nothing was written")
@@ -171,6 +190,35 @@ struct RemindersToolsTests {
         #expect(await service.completedIDs == ["r-9"])
         #expect(outcome.auditAction.contains("Call the dentist"))
         #expect(outcome.auditAction.contains("done"))
+    }
+
+    @Test("a due window passes through and bad dates fail with the ISO sentence")
+    func dueWindow() async throws {
+        let service = FakeRemindersService()
+        let tools = RemindersTools(service: service)
+        _ = try await tools.execute(
+            action: "list",
+            arguments: ["due_after": "2026-06-08T00:00:00", "due_before": "2026-06-15T00:00:00"],
+            config: config())
+        let call = await service.listCalls.first
+        #expect(call?.dueAfter != nil)
+        #expect(call?.dueBefore != nil)
+
+        await #expect(throws: ToolFailure.self) {
+            _ = try await tools.execute(
+                action: "list", arguments: ["due_before": "someday"], config: config())
+        }
+    }
+
+    @Test("lists returns the list names with read-only audit copy")
+    func listNames() async throws {
+        let service = FakeRemindersService()
+        let tools = RemindersTools(service: service)
+        let outcome = try await tools.execute(action: "lists", arguments: [:], config: config())
+        #expect(await service.listNameCalls == 1)
+        let names = try ToolJSON.decode([String].self, from: outcome.content)
+        #expect(names == ["Inbox", "Family"])
+        #expect(outcome.auditSummary.contains("Nothing was modified"))
     }
 
     @Test("complete without an id fails")

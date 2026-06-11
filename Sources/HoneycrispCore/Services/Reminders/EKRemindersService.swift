@@ -6,16 +6,31 @@ import Foundation
 public struct EKRemindersService: RemindersServicing {
     public init() {}
 
-    public func reminders(list: String?, includeCompleted: Bool, limit: Int) async throws
-        -> [Reminder]
-    {
+    public func reminders(
+        list: String?, includeCompleted: Bool, dueAfter: Date?, dueBefore: Date?, limit: Int
+    ) async throws -> [Reminder] {
         let store = try await authorizedStore()
         let calendars = try calendars(matching: list, in: store)
         let predicate = store.predicateForReminders(in: calendars)
         return await fetch(matching: predicate, in: store) { reminders in
-            let filtered = reminders.filter { includeCompleted || !$0.isCompleted }
+            let filtered = reminders.filter { reminder in
+                guard includeCompleted || !reminder.isCompleted else { return false }
+                if dueAfter != nil || dueBefore != nil {
+                    // A due window is a question about dates; undated
+                    // reminders are excluded.
+                    guard let due = reminder.dueDateComponents?.date else { return false }
+                    if let dueAfter, due < dueAfter { return false }
+                    if let dueBefore, due >= dueBefore { return false }
+                }
+                return true
+            }
             return Array(Self.sorted(filtered).prefix(max(0, limit))).map(Reminder.init(ek:))
         }
+    }
+
+    public func listNames() async throws -> [String] {
+        let store = try await authorizedStore()
+        return store.calendars(for: .reminder).map(\.title).sorted()
     }
 
     public func dueToday(limit: Int) async throws -> [Reminder] {

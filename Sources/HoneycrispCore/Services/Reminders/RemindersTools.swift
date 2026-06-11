@@ -16,6 +16,8 @@ public struct RemindersTools: Sendable {
         switch action {
         case "list":
             return try await list(arguments, config: config)
+        case "lists":
+            return try await listNames()
         case "due":
             return try await due(arguments, config: config)
         case "create":
@@ -32,17 +34,42 @@ public struct RemindersTools: Sendable {
     {
         let list = string(arguments["list"]) ?? config.defaultRemindersList
         let includeCompleted = bool(arguments["include_completed"]) ?? false
+        let dueAfter = try dateArg(arguments, "due_after")
+        let dueBefore = try dateArg(arguments, "due_before")
         let limit = int(arguments["limit"]) ?? config.defaultLimit
         let found = try await service.reminders(
-            list: list, includeCompleted: includeCompleted, limit: limit)
+            list: list, includeCompleted: includeCompleted,
+            dueAfter: dueAfter, dueBefore: dueBefore, limit: limit)
         return ToolOutcome(
             content: try ToolJSON.encode(found),
             auditAction: list.map { "Listed the \($0) list" } ?? "Listed reminders",
             auditSummary:
                 "Read \(count(found.count, "reminder")). Nothing was modified.",
+            auditRows: {
+                var rows = [AuditDetailRow(label: "List", value: list ?? "All lists")]
+                if let dueAfter {
+                    rows.append(
+                        AuditDetailRow(label: "Due after", value: ToolDates.rowString(dueAfter)))
+                }
+                if let dueBefore {
+                    rows.append(
+                        AuditDetailRow(label: "Due before", value: ToolDates.rowString(dueBefore)))
+                }
+                rows.append(AuditDetailRow(label: "Returned", value: count(found.count, "reminder")))
+                return rows
+            }()
+        )
+    }
+
+    private func listNames() async throws -> ToolOutcome {
+        let names = try await service.listNames()
+        return ToolOutcome(
+            content: try ToolJSON.encode(names),
+            auditAction: "Listed the Reminders lists",
+            auditSummary: "Read \(names.count) list names. Nothing was modified.",
             auditRows: [
-                AuditDetailRow(label: "List", value: list ?? "All lists"),
-                AuditDetailRow(label: "Returned", value: count(found.count, "reminder")),
+                AuditDetailRow(
+                    label: "Returned", value: names.count == 1 ? "1 list" : "\(names.count) lists")
             ]
         )
     }

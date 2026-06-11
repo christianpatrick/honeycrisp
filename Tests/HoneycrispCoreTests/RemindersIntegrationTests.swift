@@ -26,13 +26,15 @@ struct RemindersIntegrationTests {
             ))
         defer { Self.remove(identifier: created.id) }
 
-        let listed = try await service.reminders(list: nil, includeCompleted: false, limit: 500)
+        let listed = try await service.reminders(
+            list: nil, includeCompleted: false, dueAfter: nil, dueBefore: nil, limit: 500)
         #expect(listed.contains { $0.id == created.id })
 
         let completed = try await service.complete(id: created.id)
         #expect(completed.completed)
 
-        let after = try await service.reminders(list: nil, includeCompleted: true, limit: 500)
+        let after = try await service.reminders(
+            list: nil, includeCompleted: true, dueAfter: nil, dueBefore: nil, limit: 500)
         #expect(after.first { $0.id == created.id }?.completed == true)
     }
 
