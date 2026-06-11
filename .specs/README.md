@@ -68,3 +68,4 @@ Checkable statements that make this task done.
 | HC-034 | Sparkle in-app updater | done |
 | HC-035 | Read-only by default | done |
 | HC-036 | Harden the release pipeline | done |
+| HC-037 | Hardened runtime entitlements for the Contacts and Calendar prompts | done |

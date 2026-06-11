@@ -8,5 +8,15 @@
 	     automation prompt at first use. -->
 	<key>com.apple.security.automation.apple-events</key>
 	<true/>
+	<!-- The hardened runtime refuses to show a TCC prompt for a protected
+	     resource unless the binary carries that resource's entitlement
+	     (HC-037). These two let the Contacts and Calendar prompts appear;
+	     the user still decides at the prompt. Reminders has no hardened
+	     runtime entitlement, and Mail and Messages ride Full Disk Access,
+	     so neither belongs here. -->
+	<key>com.apple.security.personal-information.addressbook</key>
+	<true/>
+	<key>com.apple.security.personal-information.calendars</key>
+	<true/>
 </dict>
 </plist>
