@@ -33,6 +33,9 @@ public struct HoneycrispConfig: Codable, Equatable, Sendable {
     public var bearerToken: String?
     public var loggingEnabled: Bool
     public var onboardingCompleted: Bool
+    /// Whether the menu bar app checks for updates on its own. The user can
+    /// turn this off in Settings and still check manually (HC-034).
+    public var automaticUpdateChecks: Bool
 
     public static let `default`: HoneycrispConfig = {
         var levels: [AppID: PermissionLevel] = [
@@ -52,7 +55,8 @@ public struct HoneycrispConfig: Codable, Equatable, Sendable {
             auditMaxEntries: 2000,
             bearerToken: nil,
             loggingEnabled: false,
-            onboardingCompleted: false
+            onboardingCompleted: false,
+            automaticUpdateChecks: true
         )
     }()
 }
@@ -149,6 +153,7 @@ extension HoneycrispConfig {
         case bearerToken
         case loggingEnabled
         case onboardingCompleted
+        case automaticUpdateChecks
     }
 
     public init(from decoder: Decoder) throws {
@@ -194,6 +199,9 @@ extension HoneycrispConfig {
         self.onboardingCompleted =
             try container.decodeIfPresent(Bool.self, forKey: .onboardingCompleted)
             ?? fallback.onboardingCompleted
+        self.automaticUpdateChecks =
+            try container.decodeIfPresent(Bool.self, forKey: .automaticUpdateChecks)
+            ?? fallback.automaticUpdateChecks
     }
 }
 

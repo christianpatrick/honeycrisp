@@ -76,4 +76,21 @@ struct ConfigPersistenceTests {
         let data = try Data(contentsOf: url)
         #expect(throws: Never.self) { try JSONSerialization.jsonObject(with: data) }
     }
+
+    @Test("automatic update checks default on and round-trip through disk")
+    func automaticUpdateChecks() throws {
+        #expect(HoneycrispConfig.default.automaticUpdateChecks == true)
+        let url = tempURL()
+        var config = HoneycrispConfig.default
+        config.automaticUpdateChecks = false
+        try config.save(to: url)
+        #expect(HoneycrispConfig.load(from: url).automaticUpdateChecks == false)
+    }
+
+    @Test("a config predating the update key defaults to checking on")
+    func updateKeyTolerantDefault() throws {
+        let url = tempURL()
+        try write(#"{"port": 5}"#, to: url)
+        #expect(HoneycrispConfig.load(from: url).automaticUpdateChecks == true)
+    }
 }
