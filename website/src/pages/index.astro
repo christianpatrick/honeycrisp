@@ -240,6 +240,21 @@ const apps = [
     </main>
 
     <script>
+      import { init, track } from "@plausible-analytics/tracker";
+
+      // Cookieless visitor counts. The domain is Plausible's public site ID,
+      // not a secret: it ships in this page's source by design. Localhost is
+      // never captured, so dev and preview sessions do not count.
+      init({ domain: "honeycrisp.app", outboundLinks: true });
+      document.getElementById("download-link")?.addEventListener("click", (event) => {
+        const target = event.currentTarget;
+        if (target instanceof HTMLAnchorElement) {
+          track("Download", { props: { url: target.href } });
+        }
+      });
+    </script>
+
+    <script>
       import { describeRelease } from "../scripts/latest-release.js";
 
       // Upgrade the static releases/latest link to a direct download of the

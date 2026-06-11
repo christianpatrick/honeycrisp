@@ -16,5 +16,8 @@
   },
   "devDependencies": {
     "astro": "6.4.6"
+  },
+  "dependencies": {
+    "@plausible-analytics/tracker": "^0.4.5"
   }
 }

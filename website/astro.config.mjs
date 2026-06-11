@@ -1,9 +1,9 @@
 // @ts-check
 import { defineConfig } from "astro/config";
 
-// The site deploys to GitHub Pages as a project page, so it lives under
-// /honeycrisp. A custom domain later only needs site and base changed here.
+// The site lives at the root of honeycrisp.app, the custom domain set in
+// the repository's Pages settings. GitHub redirects the old
+// christianpatrick.github.io/honeycrisp address here on its own.
 export default defineConfig({
-  site: "https://christianpatrick.github.io",
-  base: "/honeycrisp",
+  site: "https://honeycrisp.app",
 });
