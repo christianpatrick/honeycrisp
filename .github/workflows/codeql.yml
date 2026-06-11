@@ -1,0 +1,43 @@
+name: CodeQL
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  schedule:
+    # A weekly sweep so new queries run even when the code has not changed.
+    - cron: "17 9 * * 1"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: codeql-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  analyze:
+    name: Analyze Swift
+    # Swift analysis traces a real build, and this project only compiles with
+    # the Xcode 26.x toolchain, the same reason CI runs on macos-26. Default
+    # setup's autobuild on macos-15 is what failed before this workflow.
+    runs-on: macos-26
+    permissions:
+      contents: read
+      security-events: write
+    steps:
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+
+      - uses: github/codeql-action/init@8aad20d150bbac5944a9f9d289da16a4b0d87c1e # v4.36.2
+        with:
+          languages: swift
+          build-mode: manual
+
+      - name: Build
+        # Pin to Package.resolved so dependencies cannot float past it.
+        run: swift build --force-resolved-versions
+
+      - uses: github/codeql-action/analyze@8aad20d150bbac5944a9f9d289da16a4b0d87c1e # v4.36.2
+        with:
+          # The category default setup used, so existing alerts carry over.
+          category: "/language:swift"
