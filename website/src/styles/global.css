@@ -6,15 +6,10 @@
 :root {
   /* brand: the fruit */
   --hc-red: #c5453a;
-  --hc-red-deep: #a4322a;
-  --hc-gold: #e0a23a;
   --hc-seed: #5e4029;
-  --hc-flesh: #f6ecd0;
-  --hc-green: #7e9f46;
 
   /* paper and ink */
   --hc-paper: #faf3e2;
-  --hc-paper-2: #f3ead3;
   --hc-paper-edge: #e7dbbe;
   --hc-ink: #2b2620;
   --hc-ink-soft: #6e6555;
@@ -26,7 +21,6 @@
   --font-hand: "Caveat", "Bradley Hand", cursive;
   --font-serif: "Newsreader", Georgia, "Times New Roman", serif;
   --font-sans: "Sora", system-ui, -apple-system, sans-serif;
-  --font-mono: "Geist Mono", ui-monospace, "SF Mono", monospace;
 
   /* shadows: warm brown, soft, low */
   --shadow-md: 2px 4px 12px rgba(80, 60, 20, 0.14);

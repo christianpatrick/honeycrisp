@@ -1,7 +1,6 @@
 Copyright 2014 The Caveat Project Authors (https://github.com/googlefonts/caveat)
 Copyright 2020 The Newsreader Project Authors (https://github.com/productiontype/Newsreader)
 Copyright 2019 The Sora Project Authors (https://github.com/sora-xor/sora-font)
-Copyright 2023 Vercel, Inc. (https://github.com/vercel/geist-font)
 
 
 This Font Software is licensed under the SIL Open Font License, Version 1.1.
