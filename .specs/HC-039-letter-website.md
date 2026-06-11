@@ -9,12 +9,12 @@ Honeycrisp needs a public home that is more welcoming than a README. A design co
 ## Scope
 
 - A self-contained Astro project in website/: the letter page, design tokens from the design system, self-hosted OFL webfonts, and Christian's photo in the polaroid with the caption "Hi, my name's Christian".
-- Copy from README.md, as reviewed by Christian: the headline "Your assistant, fully fluent in your Mac.", five apps including Calendar in README order, privacy phrased as the README phrases it (nothing uploaded, a local activity list you can clear), and the "Why I built this" paragraphs word for word, smiley included. No masthead attribution, and no mention of Homebrew anywhere.
+- Copy from README.md, as reviewed by Christian: the headline "Your assistant, fully fluent in your Mac.", five apps including Calendar in README order, privacy phrased as the README phrases it (nothing uploaded, a local activity list you can clear), and the "Why I built this" paragraphs word for word, smiley included. The sign-off sits in the story column, aligned with those paragraphs. No masthead attribution, no postscript, and no mention of Homebrew anywhere.
 - The one download path is GitHub releases. The page carries a download link to releases/latest that works with no JavaScript, progressively enhanced by a single client-side GitHub API request that labels it with the current version and points it straight at the release zip.
 - The site is served at the root of https://honeycrisp.app, the custom domain configured in the repository's Pages settings. GitHub redirects the github.io address on its own.
 - Plausible analytics through @plausible-analytics/tracker: cookieless pageviews, outbound link tracking, and a Download custom event carrying the release URL. The site ID is the public domain, hardcoded because it ships in every page's source by design; no repository secret or variable exists for it, and localhost is never captured.
 - One source of truth for artwork: the page imports the icon and the five app icons straight from the repository's assets/ folder, the same files the README and app use, including the favicon. No copies under website/.
-- A footer credit, "Built with apples by Christian.", linking to https://mynameischristian.com/ in a new tab with rel noopener.
+- A small footer credit, "Built with apples by Christian.", linking to https://mynameischristian.com/ in a new tab with rel noopener.
 - .github/workflows/website.yml: build and test on pull requests, build and deploy to GitHub Pages on pushes to main, filtered to website/**, assets/**, and the workflow itself. Every action pinned to a commit SHA, matching HC-036.
 - Release isolation: semantic-release ignores the website commit scope so site work never cuts an app release. Swift packaging already reads nothing from website/.
 - AGENTS.md gains a Website section recording these decisions.
