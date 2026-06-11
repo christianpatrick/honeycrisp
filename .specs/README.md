@@ -70,7 +70,4 @@ Checkable statements that make this task done.
 | HC-036 | Harden the release pipeline | done |
 | HC-037 | Hardened runtime entitlements for the Contacts and Calendar prompts | done |
 | HC-038 | CodeQL advanced setup with a manual Swift build | done |
-| HC-039 | The letter website on GitHub Pages | done |
-| HC-040 | Plausible analytics and the honeycrisp.app domain | done |
-| HC-041 | Letter copy corrections | done |
-| HC-042 | One source of truth for the brand SVGs | done |
+| HC-039 | The letter website at honeycrisp.app | done |
