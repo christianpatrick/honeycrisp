@@ -4,9 +4,7 @@ Honeycrisp runs on your own Mac and is trusted with personal data (Mail, Message
 
 ## Reporting a vulnerability
 
-Please report security issues privately, not in a public issue or pull request.
-
-- Preferred: open a private report through GitHub, using **Report a vulnerability** on the repository's [Security tab](https://github.com/christianpatrick/honeycrisp/security/advisories/new).
+Please report security issues privately through GitHub, using **Report a vulnerability** on the repository's [Security tab](https://github.com/christianpatrick/honeycrisp/security/advisories/new). Do not open a public issue or pull request for a security problem.
 
 It helps to include what you found, the steps to reproduce it, the version (the panel footer or `honeycrisp version`), and what someone could do with it. A small proof of concept is welcome.
 
