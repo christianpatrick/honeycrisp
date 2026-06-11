@@ -24,6 +24,24 @@ func run(_ tool: String, _ arguments: [String]) throws {
     }
 }
 
+/// Runs a tool and returns its trimmed stdout, or nil on any failure.
+func capture(_ tool: String, _ arguments: [String]) -> String? {
+    let process = Process()
+    process.executableURL = URL(fileURLWithPath: tool)
+    process.arguments = arguments
+    process.currentDirectoryURL = root
+    let pipe = Pipe()
+    process.standardOutput = pipe
+    process.standardError = Pipe()
+    do { try process.run() } catch { return nil }
+    process.waitUntilExit()
+    guard process.terminationStatus == 0 else { return nil }
+    let data = pipe.fileHandleForReading.readDataToEndOfFile()
+    let text = String(decoding: data, as: UTF8.self)
+        .trimmingCharacters(in: .whitespacesAndNewlines)
+    return text.isEmpty ? nil : text
+}
+
 func fail(_ message: String) -> Never {
     FileHandle.standardError.write(Data(("package-app: " + message + "\n").utf8))
     exit(1)
@@ -120,8 +138,21 @@ if let svgImage = NSImage(contentsOf: iconSource) {
 }
 
 // 6. Info.plist. The bundle id is locked (changing it resets TCC grants).
-// Keep in sync with HoneycrispInfo.version.
-let version = "0.3.0"
+// The git tag is the version's single source of truth: the release workflow
+// sets HONEYCRISP_VERSION from the computed tag; a local build reads the
+// latest tag; a tagless checkout falls back to a dev marker.
+func resolveVersion() -> String {
+    func strip(_ v: String) -> String { v.hasPrefix("v") ? String(v.dropFirst()) : v }
+    if let env = ProcessInfo.processInfo.environment["HONEYCRISP_VERSION"], !env.isEmpty {
+        return strip(env)
+    }
+    if let tag = capture("/usr/bin/git", ["describe", "--tags", "--abbrev=0"]) {
+        return strip(tag)
+    }
+    return "0.0.0-dev"
+}
+let version = resolveVersion()
+print("version: \(version)")
 let plist: [String: Any] = [
     "CFBundleIdentifier": "app.honeycrisp.Honeycrisp",
     "CFBundleName": "Honeycrisp",
