@@ -14,8 +14,8 @@ import contactsIcon from "../../../assets/app-icons/contacts.svg?raw";
 
 // Menu bar screenshots become a sideways strip of taped prints. The strip
 // renders only when files exist under src/assets/screenshots, so the page
-// ships clean until the PNGs land.
-const shotModules = import.meta.glob("../assets/screenshots/*.png", { eager: true });
+// ships clean until the images land.
+const shotModules = import.meta.glob("../assets/screenshots/*.{png,jpg,jpeg}", { eager: true });
 const shotMeta = {
   "01-activity": {
     caption: "every action, on the record",
@@ -36,7 +36,7 @@ const shotMeta = {
 };
 const screenshots = Object.entries(shotModules)
   .map(([path, mod]) => {
-    const name = path.split("/").pop().replace(".png", "");
+    const name = path.split("/").pop().replace(/\.(png|jpe?g)$/i, "");
     const meta = shotMeta[name] ?? { caption: name.replace(/^\d+-/, "").replace(/-/g, " "), alt: name };
     return { img: mod.default, name, ...meta };
   })
@@ -47,7 +47,8 @@ const base = import.meta.env.BASE_URL.endsWith("/")
   ? import.meta.env.BASE_URL
   : `${import.meta.env.BASE_URL}/`;
 const canonical = new URL(base, Astro.site);
-const ogImage = new URL(`${base}og.png`, Astro.site);
+// Christian's own social card, uploaded to public/ alongside the build.
+const ogImage = new URL(`${base}og.jpg`, Astro.site);
 const description =
   "A fast, private, and transparent MCP server for your Apple apps. Honeycrisp gives any AI assistant native access to Mail, Reminders, Calendar, Messages, and Contacts, and everything stays on your Mac.";
 
