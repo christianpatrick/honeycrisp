@@ -280,6 +280,31 @@ public enum ToolRegistry {
                 ],
                 required: ["title", "start"])
         ),
+        "calendar_update": Definition(
+            description:
+                "Update an event in place. Only the fields you pass change. Moving just the start keeps the event's length. Recurring events change only this occurrence.",
+            schema: schema(
+                properties: [
+                    "id": prop("string", "The event id from calendar_list or calendar_today."),
+                    "title": prop("string", "A new title."),
+                    "start": prop("string", "A new start, ISO 8601, like 2026-06-12T09:00:00."),
+                    "end": prop("string", "A new end, ISO 8601. Must come after the start."),
+                    "all_day": prop("boolean", "Make it an all day event, or not."),
+                    "calendar": prop("string", "Move it to this calendar. calendar_calendars names them."),
+                    "location": prop("string", "A new location, or an empty string to clear it."),
+                    "notes": prop("string", "New notes, or an empty string to clear them."),
+                ],
+                required: ["id"])
+        ),
+        "calendar_delete": Definition(
+            description:
+                "Delete one event by id. A recurring event loses only this occurrence.",
+            schema: schema(
+                properties: [
+                    "id": prop("string", "The event id from calendar_list or calendar_today."),
+                ],
+                required: ["id"])
+        ),
         "messages_recent": Definition(
             description: "Read the most recent Messages conversations with their latest messages.",
             schema: schema(

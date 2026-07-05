@@ -51,6 +51,79 @@ public struct EKCalendarService: CalendarServicing {
         return CalendarEvent(ek: event)
     }
 
+    public func update(_ update: EventUpdate) async throws -> CalendarEvent {
+        let store = try await authorizedStore()
+        let event = try event(id: update.id, in: store)
+        if let title = update.title {
+            event.title = title
+        }
+        let window = try Self.resolvedWindow(
+            currentStart: event.startDate ?? Date(),
+            currentEnd: event.endDate ?? event.startDate ?? Date(),
+            newStart: update.start,
+            newEnd: update.end)
+        event.startDate = window.start
+        event.endDate = window.end
+        if let allDay = update.allDay {
+            event.isAllDay = allDay
+        }
+        if let name = update.calendar {
+            guard let calendar = try calendars(matching: name, in: store)?.first else {
+                throw ToolFailure("There is no calendar named \u{201C}\(name)\u{201D}.")
+            }
+            event.calendar = calendar
+        }
+        if let location = update.location {
+            event.location = location.isEmpty ? nil : location
+        }
+        if let notes = update.notes {
+            event.notes = notes.isEmpty ? nil : notes
+        }
+        try store.save(event, span: .thisEvent)
+        return CalendarEvent(ek: event)
+    }
+
+    public func delete(id: String) async throws -> CalendarEvent {
+        let store = try await authorizedStore()
+        let event = try event(id: id, in: store)
+        let snapshot = CalendarEvent(ek: event)
+        try store.remove(event, span: .thisEvent)
+        return snapshot
+    }
+
+    /// The window an update lands on: moving only the start keeps the
+    /// event's duration, and an end that does not follow the final start
+    /// refuses instead of writing a backwards event.
+    static func resolvedWindow(
+        currentStart: Date, currentEnd: Date, newStart: Date?, newEnd: Date?
+    ) throws -> (start: Date, end: Date) {
+        switch (newStart, newEnd) {
+        case (nil, nil):
+            return (currentStart, currentEnd)
+        case (let start?, nil):
+            return (start, start.addingTimeInterval(currentEnd.timeIntervalSince(currentStart)))
+        case (nil, let end?):
+            guard end > currentStart else {
+                throw ToolFailure(
+                    "The end must come after the start, so nothing was changed.")
+            }
+            return (currentStart, end)
+        case (let start?, let end?):
+            guard end > start else {
+                throw ToolFailure(
+                    "The end must come after the start, so nothing was changed.")
+            }
+            return (start, end)
+        }
+    }
+
+    private func event(id: String, in store: EKEventStore) throws -> EKEvent {
+        guard let event = store.event(withIdentifier: id) else {
+            throw ToolFailure("No event matched the id \u{201C}\(id)\u{201D}.")
+        }
+        return event
+    }
+
     // MARK: - Plumbing
 
     private func authorizedStore() async throws -> EKEventStore {

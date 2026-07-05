@@ -51,6 +51,35 @@ public struct NewEvent: Codable, Equatable, Sendable {
     }
 }
 
+/// What calendar_update accepts: a partial change where nil means leave
+/// that field alone. Empty location or notes strings clear those fields;
+/// moving only the start keeps the event's duration (HC-041).
+public struct EventUpdate: Equatable, Sendable {
+    public let id: String
+    public let title: String?
+    public let start: Date?
+    public let end: Date?
+    public let allDay: Bool?
+    public let calendar: String?
+    public let location: String?
+    public let notes: String?
+
+    public init(
+        id: String, title: String? = nil, start: Date? = nil, end: Date? = nil,
+        allDay: Bool? = nil, calendar: String? = nil, location: String? = nil,
+        notes: String? = nil
+    ) {
+        self.id = id
+        self.title = title
+        self.start = start
+        self.end = end
+        self.allDay = allDay
+        self.calendar = calendar
+        self.location = location
+        self.notes = notes
+    }
+}
+
 /// The Calendar domain seam. EKCalendarService is the real one; EventKit
 /// cannot attach attendees programmatically, so created events cannot send
 /// invitations and nothing here ever leaves the Mac.
@@ -60,4 +89,8 @@ public protocol CalendarServicing: Sendable {
     func events(from: Date, to: Date, calendar: String?, limit: Int) async throws -> [CalendarEvent]
     func calendarNames() async throws -> [String]
     func create(_ new: NewEvent) async throws -> CalendarEvent
+    /// Touches one occurrence (span this event), not a whole series.
+    func update(_ update: EventUpdate) async throws -> CalendarEvent
+    /// Returns the deleted event's last snapshot for the audit trail.
+    func delete(id: String) async throws -> CalendarEvent
 }
