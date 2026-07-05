@@ -222,6 +222,31 @@ public enum ToolRegistry {
                 ],
                 required: ["id"])
         ),
+        "reminders_update": Definition(
+            description:
+                "Update a reminder in place. Only the fields you pass change; the rest stay as they are.",
+            schema: schema(
+                properties: [
+                    "id": prop("string", "The reminder id from reminders_list or reminders_due."),
+                    "title": prop("string", "A new title."),
+                    "due": prop(
+                        "string",
+                        "A new due date, ISO 8601 like 2026-06-12T09:00:00, or an empty string to remove the due date."),
+                    "notes": prop("string", "New notes, or an empty string to clear them."),
+                    "list": prop("string", "Move it to this list. reminders_lists names them."),
+                    "completed": prop(
+                        "boolean", "true marks it done, false reopens a completed reminder."),
+                ],
+                required: ["id"])
+        ),
+        "reminders_delete": Definition(
+            description: "Delete one reminder by id. This removes it from Reminders.",
+            schema: schema(
+                properties: [
+                    "id": prop("string", "The reminder id from reminders_list or reminders_due."),
+                ],
+                required: ["id"])
+        ),
         "calendar_today": Definition(
             description: "List today's calendar events, in order.",
             schema: schema(properties: [

@@ -69,12 +69,53 @@ public struct EKRemindersService: RemindersServicing {
 
     public func complete(id: String) async throws -> Reminder {
         let store = try await authorizedStore()
-        guard let item = store.calendarItem(withIdentifier: id) as? EKReminder else {
-            throw ToolFailure("No reminder matched the id \u{201C}\(id)\u{201D}.")
-        }
+        let item = try reminder(id: id, in: store)
         item.isCompleted = true
         try store.save(item, commit: true)
         return Reminder(ek: item)
+    }
+
+    public func update(_ update: ReminderUpdate) async throws -> Reminder {
+        let store = try await authorizedStore()
+        let item = try reminder(id: update.id, in: store)
+        if let title = update.title {
+            item.title = title
+        }
+        if let notes = update.notes {
+            item.notes = notes.isEmpty ? nil : notes
+        }
+        if let list = update.list {
+            guard let calendar = try calendars(matching: list, in: store)?.first else {
+                throw ToolFailure("There is no Reminders list named \u{201C}\(list)\u{201D}.")
+            }
+            item.calendar = calendar
+        }
+        if update.clearDue {
+            item.dueDateComponents = nil
+        } else if let dueDate = update.dueDate {
+            item.dueDateComponents = Calendar.current.dateComponents(
+                [.year, .month, .day, .hour, .minute], from: dueDate)
+        }
+        if let completed = update.completed {
+            item.isCompleted = completed
+        }
+        try store.save(item, commit: true)
+        return Reminder(ek: item)
+    }
+
+    public func delete(id: String) async throws -> Reminder {
+        let store = try await authorizedStore()
+        let item = try reminder(id: id, in: store)
+        let snapshot = Reminder(ek: item)
+        try store.remove(item, commit: true)
+        return snapshot
+    }
+
+    private func reminder(id: String, in store: EKEventStore) throws -> EKReminder {
+        guard let item = store.calendarItem(withIdentifier: id) as? EKReminder else {
+            throw ToolFailure("No reminder matched the id \u{201C}\(id)\u{201D}.")
+        }
+        return item
     }
 
     // MARK: - Plumbing

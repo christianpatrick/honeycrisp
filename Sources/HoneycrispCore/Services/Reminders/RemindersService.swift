@@ -37,6 +37,32 @@ public struct NewReminder: Codable, Equatable, Sendable {
     }
 }
 
+/// What reminders_update accepts: a partial change where nil means leave
+/// that field alone. An empty notes string clears the notes; clearDue
+/// removes the due date (HC-041).
+public struct ReminderUpdate: Equatable, Sendable {
+    public let id: String
+    public let title: String?
+    public let notes: String?
+    public let list: String?
+    public let dueDate: Date?
+    public let clearDue: Bool
+    public let completed: Bool?
+
+    public init(
+        id: String, title: String? = nil, notes: String? = nil, list: String? = nil,
+        dueDate: Date? = nil, clearDue: Bool = false, completed: Bool? = nil
+    ) {
+        self.id = id
+        self.title = title
+        self.notes = notes
+        self.list = list
+        self.dueDate = dueDate
+        self.clearDue = clearDue
+        self.completed = completed
+    }
+}
+
 /// The Reminders domain seam. EKRemindersService is the real one.
 public protocol RemindersServicing: Sendable {
     /// A due window excludes reminders without a due date: a window is a
@@ -49,4 +75,7 @@ public protocol RemindersServicing: Sendable {
     func dueToday(limit: Int) async throws -> [Reminder]
     func create(_ new: NewReminder) async throws -> Reminder
     func complete(id: String) async throws -> Reminder
+    func update(_ update: ReminderUpdate) async throws -> Reminder
+    /// Returns the deleted reminder's last snapshot for the audit trail.
+    func delete(id: String) async throws -> Reminder
 }
