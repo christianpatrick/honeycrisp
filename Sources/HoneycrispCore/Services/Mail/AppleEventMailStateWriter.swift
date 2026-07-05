@@ -43,6 +43,41 @@ public struct AppleEventMailStateWriter: MailStateWriting {
         return deleted
     }
 
+    /// Reads flagged status back through the same targeting, so the
+    /// integration tests can verify a toggle and restore the message's
+    /// real prior state instead of guessing it.
+    func flaggedStatus(messageID raw: String) async throws -> Bool {
+        try await ensureMailIsRunning()
+        let target = NSAppleEventDescriptor(bundleIdentifier: Self.mailBundleID)
+        let id = try Self.numericID(raw)
+        let message = try Self.messageSpecifier(messageID: id)
+        let propertyRecord = NSAppleEventDescriptor.record()
+        propertyRecord.setDescriptor(
+            NSAppleEventDescriptor(typeCode: Self.code("prop")), forKeyword: Self.code("want"))
+        propertyRecord.setDescriptor(message, forKeyword: Self.code("from"))
+        propertyRecord.setDescriptor(
+            NSAppleEventDescriptor(enumCode: Self.code("prop")), forKeyword: Self.code("form"))
+        propertyRecord.setDescriptor(
+            NSAppleEventDescriptor(typeCode: Self.code("isfl")), forKeyword: Self.code("seld"))
+        guard let propertySpecifier = propertyRecord.coerce(toDescriptorType: Self.code("obj "))
+        else {
+            throw ToolFailure("Could not address the message state.")
+        }
+        let event = NSAppleEventDescriptor.appleEvent(
+            withEventClass: Self.code("core"),
+            eventID: Self.code("getd"),
+            targetDescriptor: target,
+            returnID: AEReturnID(kAutoGenerateReturnID),
+            transactionID: AETransactionID(kAnyTransactionID)
+        )
+        event.setParam(propertySpecifier, forKeyword: Self.code("----"))
+        let reply = try event.sendEvent(options: [.waitForReply], timeout: 20)
+        guard let value = reply.paramDescriptor(forKeyword: Self.code("----")) else {
+            throw ToolFailure("Mail did not hand back the flag state.")
+        }
+        return value.booleanValue
+    }
+
     // MARK: - Events
 
     /// core/setd: set (<property> of (message of inbox whose id = N)).
