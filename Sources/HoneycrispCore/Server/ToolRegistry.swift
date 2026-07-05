@@ -186,6 +186,28 @@ public enum ToolRegistry {
                         "string", "Or a thread id to mark every message in the conversation."),
                 ])
         ),
+        "mail_update": Definition(
+            description:
+                "Change a message's read or flagged state, or a whole thread's with thread_id. Pass read or flagged or both. Works on inbox messages; Mail syncs the change to your mail server.",
+            schema: schema(
+                properties: [
+                    "message_id": prop("string", "One message id from mail_search or mail_read."),
+                    "thread_id": prop(
+                        "string", "Or a thread id to change every message in the conversation."),
+                    "read": prop("boolean", "true marks read, false marks unread."),
+                    "flagged": prop("boolean", "true flags the message, false unflags it."),
+                ])
+        ),
+        "mail_delete": Definition(
+            description:
+                "Move a message to Mail's Trash, or a whole thread with thread_id. Works on inbox messages; Mail syncs the change to your mail server.",
+            schema: schema(
+                properties: [
+                    "message_id": prop("string", "One message id from mail_search or mail_read."),
+                    "thread_id": prop(
+                        "string", "Or a thread id to delete every message in the conversation."),
+                ])
+        ),
         "reminders_list": Definition(
             description:
                 "List reminders, optionally from one list, within a due window, or including completed ones. Due this week is due_after now and due_before next week; overdue is due_before now.",

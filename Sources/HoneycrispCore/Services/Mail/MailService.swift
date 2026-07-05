@@ -104,6 +104,10 @@ public protocol MailServicing: Sendable {
     func send(_ draft: MailDraft) async throws -> MailComposeReceipt
     /// Returns how many messages were marked.
     func markRead(messageIDs: [String]) async throws -> Int
+    /// Sets read or flagged state (HC-041); returns how many changed.
+    func setState(messageIDs: [String], read: Bool?, flagged: Bool?) async throws -> Int
+    /// Moves messages to Mail's Trash; returns how many moved.
+    func delete(messageIDs: [String]) async throws -> Int
 }
 
 /// Sub-seams: the read side over the Envelope Index, and the compose side
@@ -122,8 +126,9 @@ public protocol MailComposing: Sendable {
     func compose(_ draft: MailDraft, send: Bool) async throws -> MailComposeReceipt
 }
 
-public protocol MailReadMarking: Sendable {
-    func markRead(messageIDs: [String]) async throws -> Int
+public protocol MailStateWriting: Sendable {
+    func setState(messageIDs: [String], read: Bool?, flagged: Bool?) async throws -> Int
+    func delete(messageIDs: [String]) async throws -> Int
 }
 
 /// The real composition: Envelope Index plus .emlx for reads, raw Apple
@@ -131,12 +136,12 @@ public protocol MailReadMarking: Sendable {
 public struct MailService: MailServicing {
     private let reader: any EnvelopeIndexReading
     private let composer: any MailComposing
-    private let marker: any MailReadMarking
+    private let marker: any MailStateWriting
 
     public init(
         reader: any EnvelopeIndexReading,
         composer: any MailComposing,
-        marker: any MailReadMarking
+        marker: any MailStateWriting
     ) {
         self.reader = reader
         self.composer = composer
@@ -148,7 +153,7 @@ public struct MailService: MailServicing {
         self.init(
             reader: MailDatabase(),
             composer: AppleEventMailComposer(),
-            marker: AppleEventMailReadMarker()
+            marker: AppleEventMailStateWriter()
         )
     }
 
@@ -182,6 +187,14 @@ public struct MailService: MailServicing {
     }
 
     public func markRead(messageIDs: [String]) async throws -> Int {
-        try await marker.markRead(messageIDs: messageIDs)
+        try await marker.setState(messageIDs: messageIDs, read: true, flagged: nil)
+    }
+
+    public func setState(messageIDs: [String], read: Bool?, flagged: Bool?) async throws -> Int {
+        try await marker.setState(messageIDs: messageIDs, read: read, flagged: flagged)
+    }
+
+    public func delete(messageIDs: [String]) async throws -> Int {
+        try await marker.delete(messageIDs: messageIDs)
     }
 }
