@@ -3,14 +3,42 @@ import HoneycrispCore
 
 @Suite("Action catalog")
 struct ActionCatalogTests {
-    @Test("twenty actions with the designed per-app counts")
+    @Test("twenty-eight actions with the designed per-app counts")
     func actionCounts() {
-        #expect(ActionCatalog.all.count == 20)
-        #expect(ActionCatalog.actions(for: .mail).count == 5)
-        #expect(ActionCatalog.actions(for: .reminders).count == 4)
-        #expect(ActionCatalog.actions(for: .calendar).count == 3)
+        #expect(ActionCatalog.all.count == 28)
+        #expect(ActionCatalog.actions(for: .mail).count == 7)
+        #expect(ActionCatalog.actions(for: .reminders).count == 6)
+        #expect(ActionCatalog.actions(for: .calendar).count == 5)
         #expect(ActionCatalog.actions(for: .messages).count == 5)
-        #expect(ActionCatalog.actions(for: .contacts).count == 3)
+        #expect(ActionCatalog.actions(for: .contacts).count == 5)
+    }
+
+    @Test("the HC-041 update and delete rows are guarded writes without approval")
+    func updateAndDeleteRows() throws {
+        for (app, id, label) in [
+            (AppID.reminders, "update", "Update a reminder"),
+            (.reminders, "delete", "Delete a reminder"),
+            (.calendar, "update", "Update an event"),
+            (.calendar, "delete", "Delete an event"),
+            (.contacts, "update", "Update a contact"),
+            (.contacts, "delete", "Delete a contact"),
+            (.mail, "update", "Update a message"),
+            (.mail, "delete", "Delete a message"),
+        ] {
+            let descriptor = try #require(
+                ActionCatalog.descriptor(app: app, action: id),
+                "missing \(app.rawValue).\(id)")
+            #expect(descriptor.label == label)
+            #expect(descriptor.kind == .write)
+            #expect(descriptor.defaultOn == false)
+            #expect(descriptor.requiresApproval == false)
+        }
+    }
+
+    @Test("messages deliberately has no update or delete")
+    func messagesHasNoUpdateOrDelete() {
+        #expect(ActionCatalog.descriptor(app: .messages, action: "update") == nil)
+        #expect(ActionCatalog.descriptor(app: .messages, action: "delete") == nil)
     }
 
     @Test("the conversation history action is a default-on read")
