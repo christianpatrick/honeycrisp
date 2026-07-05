@@ -138,6 +138,7 @@ struct CalendarToolsTests {
                 "calendar": "Family",
                 "location": "Bay Dental",
                 "notes": "Bring the paperwork",
+                "url": "https://baydental.example/booking",
             ],
             defaultLimit: 20)
         let created = await service.created
@@ -153,6 +154,7 @@ struct CalendarToolsTests {
         #expect(created.first?.end == start.addingTimeInterval(3600))
         #expect(created.first?.calendar == "Family")
         #expect(created.first?.location == "Bay Dental")
+        #expect(created.first?.url == "https://baydental.example/booking")
         #expect(outcome.auditAction.contains("Dentist"))
         #expect(outcome.auditSummary.contains("Created one event"))
     }
@@ -239,6 +241,23 @@ struct CalendarToolsTests {
             _ = try await tools.execute(
                 action: "update", arguments: ["id": "e-1", "start": "sometime"], defaultLimit: 20)
         }
+    }
+
+    @Test("update carries a url, and an empty url clears it")
+    func updateURL() async throws {
+        let service = FakeCalendarService()
+        let tools = CalendarTools(service: service)
+        let outcome = try await tools.execute(
+            action: "update",
+            arguments: ["id": "e-1", "url": "https://meet.example/standup"],
+            defaultLimit: 20)
+        let update = try #require(await service.updates.first)
+        #expect(update.url == "https://meet.example/standup")
+        #expect(outcome.auditSummary.contains("url"))
+
+        _ = try await tools.execute(
+            action: "update", arguments: ["id": "e-1", "url": ""], defaultLimit: 20)
+        #expect(await service.updates.last?.url == "")
     }
 
     @Test("delete passes the id and audits what went away")

@@ -36,6 +36,9 @@ public struct EKCalendarService: CalendarServicing {
         event.isAllDay = new.allDay
         event.location = new.location
         event.notes = new.notes
+        if let url = new.url, !url.isEmpty {
+            event.url = try Self.parsedURL(url)
+        }
         if let name = new.calendar {
             guard let calendar = try calendars(matching: name, in: store)?.first else {
                 throw ToolFailure("There is no calendar named \u{201C}\(name)\u{201D}.")
@@ -79,8 +82,18 @@ public struct EKCalendarService: CalendarServicing {
         if let notes = update.notes {
             event.notes = notes.isEmpty ? nil : notes
         }
+        if let url = update.url {
+            event.url = url.isEmpty ? nil : try Self.parsedURL(url)
+        }
         try store.save(event, span: .thisEvent)
         return CalendarEvent(ek: event)
+    }
+
+    private static func parsedURL(_ raw: String) throws -> URL {
+        guard let url = URL(string: raw) else {
+            throw ToolFailure("\u{201C}\(raw)\u{201D} is not a valid URL.")
+        }
+        return url
     }
 
     public func delete(id: String) async throws -> CalendarEvent {
@@ -182,7 +195,8 @@ extension CalendarEvent {
             end: event.endDate ?? event.startDate ?? Date(),
             allDay: event.isAllDay,
             location: event.location,
-            notes: event.notes
+            notes: event.notes,
+            url: event.url?.absoluteString
         )
     }
 }

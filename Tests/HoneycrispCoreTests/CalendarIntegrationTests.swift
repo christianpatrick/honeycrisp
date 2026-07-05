@@ -45,6 +45,13 @@ struct CalendarIntegrationTests {
         #expect(detailed.title == "\(marker) moved")
         #expect(detailed.location == "Kitchen")
 
+        let linked = try await service.update(
+            EventUpdate(id: created.id, url: "https://honeycrisp.app/test"))
+        #expect(linked.url == "https://honeycrisp.app/test")
+
+        let unlinked = try await service.update(EventUpdate(id: created.id, url: ""))
+        #expect(unlinked.url == nil)
+
         let deleted = try await service.delete(id: created.id)
         needsCleanup = false
         #expect(deleted.id == created.id)

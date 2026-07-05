@@ -305,6 +305,9 @@ public enum ToolRegistry {
                     "calendar": prop("string", "The calendar to put it on. Defaults to your default calendar."),
                     "location": prop("string", "Where it happens."),
                     "notes": prop("string", "Extra notes on the event."),
+                    "url": prop(
+                        "string",
+                        "A URL to attach, like a meeting or note link. Calendar shows it on the event."),
                 ],
                 required: ["title", "start"])
         ),
@@ -321,6 +324,9 @@ public enum ToolRegistry {
                     "calendar": prop("string", "Move it to this calendar. calendar_calendars names them."),
                     "location": prop("string", "A new location, or an empty string to clear it."),
                     "notes": prop("string", "New notes, or an empty string to clear them."),
+                    "url": prop(
+                        "string",
+                        "A URL to attach, like a meeting or note link, or an empty string to clear it. Calendar shows it on the event."),
                 ],
                 required: ["id"])
         ),

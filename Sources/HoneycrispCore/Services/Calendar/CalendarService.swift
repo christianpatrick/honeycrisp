@@ -1,6 +1,7 @@
 import Foundation
 
-/// One calendar event as the model sees it.
+/// One calendar event as the model sees it. The url is the event's URL
+/// field, which Calendar shows in the event inspector.
 public struct CalendarEvent: Codable, Equatable, Sendable, Identifiable {
     public let id: String
     public let title: String
@@ -10,10 +11,11 @@ public struct CalendarEvent: Codable, Equatable, Sendable, Identifiable {
     public let allDay: Bool
     public let location: String?
     public let notes: String?
+    public let url: String?
 
     public init(
         id: String, title: String, calendar: String, start: Date, end: Date,
-        allDay: Bool, location: String?, notes: String?
+        allDay: Bool, location: String?, notes: String?, url: String? = nil
     ) {
         self.id = id
         self.title = title
@@ -23,6 +25,7 @@ public struct CalendarEvent: Codable, Equatable, Sendable, Identifiable {
         self.allDay = allDay
         self.location = location
         self.notes = notes
+        self.url = url
     }
 }
 
@@ -36,10 +39,12 @@ public struct NewEvent: Codable, Equatable, Sendable {
     public let calendar: String?
     public let location: String?
     public let notes: String?
+    public let url: String?
 
     public init(
         title: String, start: Date, end: Date, allDay: Bool = false,
-        calendar: String? = nil, location: String? = nil, notes: String? = nil
+        calendar: String? = nil, location: String? = nil, notes: String? = nil,
+        url: String? = nil
     ) {
         self.title = title
         self.start = start
@@ -48,12 +53,13 @@ public struct NewEvent: Codable, Equatable, Sendable {
         self.calendar = calendar
         self.location = location
         self.notes = notes
+        self.url = url
     }
 }
 
 /// What calendar_update accepts: a partial change where nil means leave
-/// that field alone. Empty location or notes strings clear those fields;
-/// moving only the start keeps the event's duration (HC-041).
+/// that field alone. Empty location, notes, or url strings clear those
+/// fields; moving only the start keeps the event's duration (HC-041).
 public struct EventUpdate: Equatable, Sendable {
     public let id: String
     public let title: String?
@@ -63,11 +69,12 @@ public struct EventUpdate: Equatable, Sendable {
     public let calendar: String?
     public let location: String?
     public let notes: String?
+    public let url: String?
 
     public init(
         id: String, title: String? = nil, start: Date? = nil, end: Date? = nil,
         allDay: Bool? = nil, calendar: String? = nil, location: String? = nil,
-        notes: String? = nil
+        notes: String? = nil, url: String? = nil
     ) {
         self.id = id
         self.title = title
@@ -77,6 +84,7 @@ public struct EventUpdate: Equatable, Sendable {
         self.calendar = calendar
         self.location = location
         self.notes = notes
+        self.url = url
     }
 }
 

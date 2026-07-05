@@ -119,7 +119,8 @@ public struct CalendarTools: Sendable {
             allDay: bool(arguments["all_day"]) ?? false,
             calendar: string(arguments["calendar"]),
             location: string(arguments["location"]),
-            notes: string(arguments["notes"])
+            notes: string(arguments["notes"]),
+            url: string(arguments["url"])
         )
         let created = try await service.create(new)
         return ToolOutcome(
@@ -145,6 +146,7 @@ public struct CalendarTools: Sendable {
         let calendar = string(arguments["calendar"])
         let location = string(arguments["location"])
         let notes = string(arguments["notes"])
+        let url = string(arguments["url"])
         var changed: [String] = []
         if title != nil { changed.append("title") }
         if start != nil { changed.append("start") }
@@ -153,15 +155,16 @@ public struct CalendarTools: Sendable {
         if calendar != nil { changed.append("calendar") }
         if location != nil { changed.append("location") }
         if notes != nil { changed.append("notes") }
+        if url != nil { changed.append("url") }
         guard !changed.isEmpty else {
             throw ToolFailure(
-                "calendar_update needs something to change: a title, start, end, all_day, calendar, location, or notes."
+                "calendar_update needs something to change: a title, start, end, all_day, calendar, location, notes, or url."
             )
         }
         let updated = try await service.update(
             EventUpdate(
                 id: id, title: title, start: start, end: end, allDay: allDay,
-                calendar: calendar, location: location, notes: notes))
+                calendar: calendar, location: location, notes: notes, url: url))
         return ToolOutcome(
             content: try ToolJSON.encode(updated),
             auditAction: "Updated the event \u{201C}\(updated.title)\u{201D}",
