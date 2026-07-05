@@ -22,6 +22,10 @@ public struct CalendarTools: Sendable {
             return try await calendarNames()
         case "create":
             return try await create(arguments)
+        case "update":
+            return try await update(arguments)
+        case "delete":
+            return try await delete(arguments)
         default:
             throw ToolFailure("Calendar cannot do \"\(action)\".")
         }
@@ -115,7 +119,8 @@ public struct CalendarTools: Sendable {
             allDay: bool(arguments["all_day"]) ?? false,
             calendar: string(arguments["calendar"]),
             location: string(arguments["location"]),
-            notes: string(arguments["notes"])
+            notes: string(arguments["notes"]),
+            url: string(arguments["url"])
         )
         let created = try await service.create(new)
         return ToolOutcome(
@@ -126,6 +131,65 @@ public struct CalendarTools: Sendable {
                 AuditDetailRow(label: "Calendar", value: created.calendar),
                 AuditDetailRow(label: "Event", value: "\u{201C}\(created.title)\u{201D}"),
                 AuditDetailRow(label: "When", value: ToolDates.rowString(created.start)),
+            ]
+        )
+    }
+
+    private func update(_ arguments: [String: Value]) async throws -> ToolOutcome {
+        guard let id = string(arguments["id"]), !id.isEmpty else {
+            throw ToolFailure("calendar_update needs the event id from calendar_list.")
+        }
+        let title = string(arguments["title"])
+        let start = try dateArg(arguments, "start")
+        let end = try dateArg(arguments, "end")
+        let allDay = bool(arguments["all_day"])
+        let calendar = string(arguments["calendar"])
+        let location = string(arguments["location"])
+        let notes = string(arguments["notes"])
+        let url = string(arguments["url"])
+        var changed: [String] = []
+        if title != nil { changed.append("title") }
+        if start != nil { changed.append("start") }
+        if end != nil { changed.append("end") }
+        if allDay != nil { changed.append("all day") }
+        if calendar != nil { changed.append("calendar") }
+        if location != nil { changed.append("location") }
+        if notes != nil { changed.append("notes") }
+        if url != nil { changed.append("url") }
+        guard !changed.isEmpty else {
+            throw ToolFailure(
+                "calendar_update needs something to change: a title, start, end, all_day, calendar, location, notes, or url."
+            )
+        }
+        let updated = try await service.update(
+            EventUpdate(
+                id: id, title: title, start: start, end: end, allDay: allDay,
+                calendar: calendar, location: location, notes: notes, url: url))
+        return ToolOutcome(
+            content: try ToolJSON.encode(updated),
+            auditAction: "Updated the event \u{201C}\(updated.title)\u{201D}",
+            auditSummary: "Changed \(changed.joined(separator: ", ")) on one event.",
+            auditRows: [
+                AuditDetailRow(label: "Calendar", value: updated.calendar),
+                AuditDetailRow(label: "Changed", value: changed.joined(separator: ", ")),
+                AuditDetailRow(label: "When", value: ToolDates.rowString(updated.start)),
+            ]
+        )
+    }
+
+    private func delete(_ arguments: [String: Value]) async throws -> ToolOutcome {
+        guard let id = string(arguments["id"]), !id.isEmpty else {
+            throw ToolFailure("calendar_delete needs the event id from calendar_list.")
+        }
+        let deleted = try await service.delete(id: id)
+        return ToolOutcome(
+            content: try ToolJSON.encode(deleted),
+            auditAction: "Deleted the event \u{201C}\(deleted.title)\u{201D}",
+            auditSummary: "The event was removed from the \(deleted.calendar) calendar.",
+            auditRows: [
+                AuditDetailRow(label: "Calendar", value: deleted.calendar),
+                AuditDetailRow(label: "Deleted", value: "\u{201C}\(deleted.title)\u{201D}"),
+                AuditDetailRow(label: "Was", value: ToolDates.rowString(deleted.start)),
             ]
         )
     }

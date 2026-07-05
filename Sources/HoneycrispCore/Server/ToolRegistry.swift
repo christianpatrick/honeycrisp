@@ -186,6 +186,28 @@ public enum ToolRegistry {
                         "string", "Or a thread id to mark every message in the conversation."),
                 ])
         ),
+        "mail_update": Definition(
+            description:
+                "Change a message's read or flagged state, or a whole thread's with thread_id. Pass read or flagged or both. Works on inbox messages; Mail syncs the change to your mail server.",
+            schema: schema(
+                properties: [
+                    "message_id": prop("string", "One message id from mail_search or mail_read."),
+                    "thread_id": prop(
+                        "string", "Or a thread id to change every message in the conversation."),
+                    "read": prop("boolean", "true marks read, false marks unread."),
+                    "flagged": prop("boolean", "true flags the message, false unflags it."),
+                ])
+        ),
+        "mail_delete": Definition(
+            description:
+                "Move a message to Mail's Trash, or a whole thread with thread_id. Works on inbox messages; Mail syncs the change to your mail server.",
+            schema: schema(
+                properties: [
+                    "message_id": prop("string", "One message id from mail_search or mail_read."),
+                    "thread_id": prop(
+                        "string", "Or a thread id to delete every message in the conversation."),
+                ])
+        ),
         "reminders_list": Definition(
             description:
                 "List reminders, optionally from one list, within a due window, or including completed ones. Due this week is due_after now and due_before next week; overdue is due_before now.",
@@ -204,18 +226,49 @@ public enum ToolRegistry {
         ),
         "reminders_create": Definition(
             description:
-                "Create a reminder, optionally with an ISO 8601 due date, a list, and notes.",
+                "Create a reminder, optionally with an ISO 8601 due date, a list, notes, and a URL.",
             schema: schema(
                 properties: [
                     "title": prop("string", "What the reminder says."),
                     "due": prop("string", "When it is due, ISO 8601, like 2026-06-12T09:00:00."),
                     "list": prop("string", "The list to put it on. Defaults to the configured list."),
                     "notes": prop("string", "Extra notes on the reminder."),
+                    "url": prop(
+                        "string",
+                        "A URL to attach, like a note link. Stored in the reminder's EventKit URL field; some Reminders versions do not show that field, so put a link in notes too when it must be visible."),
                 ],
                 required: ["title"])
         ),
         "reminders_complete": Definition(
             description: "Mark one reminder as done by id.",
+            schema: schema(
+                properties: [
+                    "id": prop("string", "The reminder id from reminders_list or reminders_due."),
+                ],
+                required: ["id"])
+        ),
+        "reminders_update": Definition(
+            description:
+                "Update a reminder in place. Only the fields you pass change; the rest stay as they are.",
+            schema: schema(
+                properties: [
+                    "id": prop("string", "The reminder id from reminders_list or reminders_due."),
+                    "title": prop("string", "A new title."),
+                    "due": prop(
+                        "string",
+                        "A new due date, ISO 8601 like 2026-06-12T09:00:00, or an empty string to remove the due date."),
+                    "notes": prop("string", "New notes, or an empty string to clear them."),
+                    "list": prop("string", "Move it to this list. reminders_lists names them."),
+                    "completed": prop(
+                        "boolean", "true marks it done, false reopens a completed reminder."),
+                    "url": prop(
+                        "string",
+                        "A URL to attach, like a note link, or an empty string to clear it. Stored in the reminder's EventKit URL field; some Reminders versions do not show that field, so put a link in notes too when it must be visible."),
+                ],
+                required: ["id"])
+        ),
+        "reminders_delete": Definition(
+            description: "Delete one reminder by id. This removes it from Reminders.",
             schema: schema(
                 properties: [
                     "id": prop("string", "The reminder id from reminders_list or reminders_due."),
@@ -252,8 +305,39 @@ public enum ToolRegistry {
                     "calendar": prop("string", "The calendar to put it on. Defaults to your default calendar."),
                     "location": prop("string", "Where it happens."),
                     "notes": prop("string", "Extra notes on the event."),
+                    "url": prop(
+                        "string",
+                        "A URL to attach, like a meeting or note link. Calendar shows it on the event."),
                 ],
                 required: ["title", "start"])
+        ),
+        "calendar_update": Definition(
+            description:
+                "Update an event in place. Only the fields you pass change. Moving just the start keeps the event's length. Recurring events change only this occurrence.",
+            schema: schema(
+                properties: [
+                    "id": prop("string", "The event id from calendar_list or calendar_today."),
+                    "title": prop("string", "A new title."),
+                    "start": prop("string", "A new start, ISO 8601, like 2026-06-12T09:00:00."),
+                    "end": prop("string", "A new end, ISO 8601. Must come after the start."),
+                    "all_day": prop("boolean", "Make it an all day event, or not."),
+                    "calendar": prop("string", "Move it to this calendar. calendar_calendars names them."),
+                    "location": prop("string", "A new location, or an empty string to clear it."),
+                    "notes": prop("string", "New notes, or an empty string to clear them."),
+                    "url": prop(
+                        "string",
+                        "A URL to attach, like a meeting or note link, or an empty string to clear it. Calendar shows it on the event."),
+                ],
+                required: ["id"])
+        ),
+        "calendar_delete": Definition(
+            description:
+                "Delete one event by id. A recurring event loses only this occurrence.",
+            schema: schema(
+                properties: [
+                    "id": prop("string", "The event id from calendar_list or calendar_today."),
+                ],
+                required: ["id"])
         ),
         "messages_recent": Definition(
             description: "Read the most recent Messages conversations with their latest messages.",
@@ -342,6 +426,33 @@ public enum ToolRegistry {
                     "organization": prop("string", "Company or organization."),
                 ],
                 required: ["given_name"])
+        ),
+        "contacts_update": Definition(
+            description:
+                "Update a contact in place. Only the fields you pass change. A phone or email replaces the contact's whole list with that one value; an empty string clears the field.",
+            schema: schema(
+                properties: [
+                    "id": prop("string", "The contact id from contacts_lookup."),
+                    "given_name": prop("string", "A new first name."),
+                    "family_name": prop("string", "A new last name."),
+                    "phone": prop(
+                        "string",
+                        "A new phone number, replacing all numbers, or an empty string to clear them."),
+                    "email": prop(
+                        "string",
+                        "A new email address, replacing all addresses, or an empty string to clear them."),
+                    "organization": prop(
+                        "string", "A new company or organization, or an empty string to clear it."),
+                ],
+                required: ["id"])
+        ),
+        "contacts_delete": Definition(
+            description: "Delete one contact card by id. This removes the card from Contacts.",
+            schema: schema(
+                properties: [
+                    "id": prop("string", "The contact id from contacts_lookup."),
+                ],
+                required: ["id"])
         ),
     ]
 

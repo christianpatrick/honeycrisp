@@ -54,13 +54,19 @@ public enum ActionCatalog {
         ActionDescriptor(app: .mail, id: "draft", label: "Draft a reply", kind: .write, defaultOn: true, requiresApproval: false),
         ActionDescriptor(app: .mail, id: "send", label: "Send mail", kind: .write, defaultOn: false, requiresApproval: true),
         ActionDescriptor(app: .mail, id: "mark_read", label: "Mark as read", kind: .write, defaultOn: false, requiresApproval: false),
+        ActionDescriptor(app: .mail, id: "update", label: "Update a message", kind: .write, defaultOn: false, requiresApproval: false),
+        ActionDescriptor(app: .mail, id: "delete", label: "Delete a message", kind: .write, defaultOn: false, requiresApproval: false),
         ActionDescriptor(app: .reminders, id: "list", label: "List reminders", kind: .read, defaultOn: true, requiresApproval: false),
         ActionDescriptor(app: .reminders, id: "due", label: "Check what is due today", kind: .read, defaultOn: true, requiresApproval: false),
         ActionDescriptor(app: .reminders, id: "create", label: "Create a reminder", kind: .write, defaultOn: true, requiresApproval: false),
         ActionDescriptor(app: .reminders, id: "complete", label: "Mark as done", kind: .write, defaultOn: true, requiresApproval: false),
+        ActionDescriptor(app: .reminders, id: "update", label: "Update a reminder", kind: .write, defaultOn: false, requiresApproval: false),
+        ActionDescriptor(app: .reminders, id: "delete", label: "Delete a reminder", kind: .write, defaultOn: false, requiresApproval: false),
         ActionDescriptor(app: .calendar, id: "today", label: "Check what is on today", kind: .read, defaultOn: true, requiresApproval: false),
         ActionDescriptor(app: .calendar, id: "list", label: "List upcoming events", kind: .read, defaultOn: true, requiresApproval: false),
         ActionDescriptor(app: .calendar, id: "create", label: "Create an event", kind: .write, defaultOn: false, requiresApproval: false),
+        ActionDescriptor(app: .calendar, id: "update", label: "Update an event", kind: .write, defaultOn: false, requiresApproval: false),
+        ActionDescriptor(app: .calendar, id: "delete", label: "Delete an event", kind: .write, defaultOn: false, requiresApproval: false),
         ActionDescriptor(app: .messages, id: "recent", label: "Read recent messages", kind: .read, defaultOn: true, requiresApproval: false),
         ActionDescriptor(app: .messages, id: "search", label: "Search conversations", kind: .read, defaultOn: true, requiresApproval: false),
         ActionDescriptor(app: .messages, id: "history", label: "Read a conversation", kind: .read, defaultOn: true, requiresApproval: false),
@@ -69,6 +75,8 @@ public enum ActionCatalog {
         ActionDescriptor(app: .contacts, id: "lookup", label: "Look up a contact", kind: .read, defaultOn: true, requiresApproval: false),
         ActionDescriptor(app: .contacts, id: "fields", label: "Read phone & email", kind: .read, defaultOn: true, requiresApproval: false),
         ActionDescriptor(app: .contacts, id: "create", label: "Add a contact", kind: .write, defaultOn: false, requiresApproval: false),
+        ActionDescriptor(app: .contacts, id: "update", label: "Update a contact", kind: .write, defaultOn: false, requiresApproval: false),
+        ActionDescriptor(app: .contacts, id: "delete", label: "Delete a contact", kind: .write, defaultOn: false, requiresApproval: false),
     ]
 
     public static func actions(for app: AppID) -> [ActionDescriptor] {

@@ -32,6 +32,35 @@ struct ContactsIntegrationTests {
         #expect(card?.emails.map(\.value).contains("test@honeycrisp.app") == true)
     }
 
+    @Test("update and delete round trip on the real store")
+    func updateAndDelete() async throws {
+        let service = CNContactsService()
+        let marker = "Test-\(UUID().uuidString.prefix(8))"
+        let created = try await service.create(
+            NewContact(
+                givenName: "Honeycrisp",
+                familyName: marker,
+                phone: "+15550100",
+                organization: "Honeycrisp"
+            ))
+        var needsCleanup = true
+        defer {
+            if needsCleanup { Self.delete(identifier: created.id) }
+        }
+
+        let updated = try await service.update(
+            ContactUpdate(id: created.id, phone: "+15550199", organization: ""))
+        #expect(updated.phones.map(\.value) == ["+15550199"])
+        #expect(updated.organization == nil)
+        #expect(updated.familyName == marker)
+
+        let deleted = try await service.delete(id: created.id)
+        needsCleanup = false
+        #expect(deleted.id == created.id)
+        let after = try await service.contact(id: created.id, name: nil)
+        #expect(after == nil)
+    }
+
     private static func delete(identifier: String) {
         let store = CNContactStore()
         guard

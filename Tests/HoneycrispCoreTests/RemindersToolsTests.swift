@@ -58,6 +58,24 @@ private actor FakeRemindersService: RemindersServicing {
             id: id, title: "Call the dentist", notes: nil,
             list: "Personal", dueDate: nil, completed: true)
     }
+
+    private(set) var updates: [ReminderUpdate] = []
+    private(set) var deletedIDs: [String] = []
+
+    func update(_ update: ReminderUpdate) async throws -> Reminder {
+        updates.append(update)
+        return Reminder(
+            id: update.id, title: update.title ?? "Call the dentist",
+            notes: update.notes, list: update.list ?? "Personal",
+            dueDate: update.dueDate, completed: update.completed ?? false)
+    }
+
+    func delete(id: String) async throws -> Reminder {
+        deletedIDs.append(id)
+        return Reminder(
+            id: id, title: "Call the dentist", notes: nil,
+            list: "Personal", dueDate: nil, completed: false)
+    }
 }
 
 private let dentist = Reminder(
@@ -127,6 +145,7 @@ struct RemindersToolsTests {
                 "due": "2026-06-12T09:00:00",
                 "list": "Personal",
                 "notes": "Ask about Friday",
+                "url": "applenotes:note/AAAA-1111",
             ],
             config: config())
         let created = await service.created
@@ -134,6 +153,7 @@ struct RemindersToolsTests {
         #expect(created.first?.title == "Call the dentist")
         #expect(created.first?.list == "Personal")
         #expect(created.first?.notes == "Ask about Friday")
+        #expect(created.first?.url == "applenotes:note/AAAA-1111")
         var components = DateComponents()
         components.year = 2026
         components.month = 6
@@ -226,6 +246,95 @@ struct RemindersToolsTests {
         let tools = RemindersTools(service: FakeRemindersService())
         await #expect(throws: ToolFailure.self) {
             _ = try await tools.execute(action: "complete", arguments: [:], config: config())
+        }
+    }
+
+    @Test("update maps partial fields and reports what changed")
+    func update() async throws {
+        let service = FakeRemindersService()
+        let tools = RemindersTools(service: service)
+        let outcome = try await tools.execute(
+            action: "update",
+            arguments: [
+                "id": "r-1",
+                "title": "Call the orthodontist",
+                "due": "2026-06-12T09:00:00",
+                "list": "Family",
+            ],
+            config: config())
+        let update = try #require(await service.updates.first)
+        #expect(update.id == "r-1")
+        #expect(update.title == "Call the orthodontist")
+        #expect(update.list == "Family")
+        #expect(update.dueDate != nil)
+        #expect(update.clearDue == false)
+        #expect(update.notes == nil)
+        #expect(update.completed == nil)
+        #expect(outcome.auditAction == "Updated the reminder \u{201C}Call the orthodontist\u{201D}")
+        let decoded = try ToolJSON.decode(Reminder.self, from: outcome.content)
+        #expect(decoded.title == "Call the orthodontist")
+    }
+
+    @Test("an empty due clears the due date and completed false reopens")
+    func updateClearsAndReopens() async throws {
+        let service = FakeRemindersService()
+        let tools = RemindersTools(service: service)
+        _ = try await tools.execute(
+            action: "update",
+            arguments: ["id": "r-1", "due": "", "completed": false],
+            config: config())
+        let update = try #require(await service.updates.first)
+        #expect(update.clearDue)
+        #expect(update.dueDate == nil)
+        #expect(update.completed == false)
+    }
+
+    @Test("update carries a url, and an empty url clears it")
+    func updateURL() async throws {
+        let service = FakeRemindersService()
+        let tools = RemindersTools(service: service)
+        let outcome = try await tools.execute(
+            action: "update",
+            arguments: ["id": "r-1", "url": "applenotes:note/AAAA-1111"],
+            config: config())
+        let update = try #require(await service.updates.first)
+        #expect(update.url == "applenotes:note/AAAA-1111")
+        #expect(outcome.auditSummary.contains("url"))
+
+        _ = try await tools.execute(
+            action: "update", arguments: ["id": "r-1", "url": ""], config: config())
+        #expect(await service.updates.last?.url == "")
+    }
+
+    @Test("update needs an id and at least one change")
+    func updateValidation() async {
+        let tools = RemindersTools(service: FakeRemindersService())
+        await #expect(throws: ToolFailure.self) {
+            _ = try await tools.execute(
+                action: "update", arguments: ["title": "x"], config: config())
+        }
+        do {
+            _ = try await tools.execute(action: "update", arguments: ["id": "r-1"], config: config())
+            Issue.record("expected a ToolFailure")
+        } catch let failure as ToolFailure {
+            #expect(failure.message.contains("something to change"))
+        } catch {
+            Issue.record("unexpected error type: \(error)")
+        }
+    }
+
+    @Test("delete passes the id and audits what went away")
+    func delete() async throws {
+        let service = FakeRemindersService()
+        let tools = RemindersTools(service: service)
+        let outcome = try await tools.execute(
+            action: "delete", arguments: ["id": "r-9"], config: config())
+        #expect(await service.deletedIDs == ["r-9"])
+        #expect(outcome.auditAction == "Deleted the reminder \u{201C}Call the dentist\u{201D}")
+        #expect(outcome.auditSummary.contains("deleted"))
+
+        await #expect(throws: ToolFailure.self) {
+            _ = try await tools.execute(action: "delete", arguments: [:], config: config())
         }
     }
 

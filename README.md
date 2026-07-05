@@ -15,9 +15,9 @@ Honeycrisp speaks to five of the apps I live in every day. Each one is a real, f
 
 | App | What Honeycrisp can do |
 | --- | --- |
-| <img src="assets/app-icons/mail.svg" width="20" align="center"> **Mail** | Pull the thread you half remember, summarize it, draft a reply that sounds like you, and mark it read when you are done. |
-| <img src="assets/app-icons/reminders.svg" width="20" align="center"> **Reminders** | Check what is due today, capture the thing you just thought of, and tick items off in the conversation. |
-| <img src="assets/app-icons/calendar.svg" width="20" align="center"> **Calendar** | See what is on today, look ahead at the week, and put new events on the books. |
+| <img src="assets/app-icons/mail.svg" width="20" align="center"> **Mail** | Pull the thread you half remember, summarize it, draft a reply that sounds like you, then mark it read, flag it, or clear it to the Trash. |
+| <img src="assets/app-icons/reminders.svg" width="20" align="center"> **Reminders** | Check what is due today, capture the thing you just thought of, move a due date, and tick items off in the conversation. |
+| <img src="assets/app-icons/calendar.svg" width="20" align="center"> **Calendar** | See what is on today, look ahead at the week, put new events on the books, and move them when plans change. |
 | <img src="assets/app-icons/messages.svg" width="20" align="center"> **Messages** | Catch up on the threads you missed and send a reply without reaching for your phone. |
 | <img src="assets/app-icons/contacts.svg" width="20" align="center"> **Contacts** | Look someone up, fix a misspelled name, or save a new face the moment it comes up. |
 

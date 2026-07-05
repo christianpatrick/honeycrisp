@@ -24,6 +24,10 @@ public struct RemindersTools: Sendable {
             return try await create(arguments, config: config)
         case "complete":
             return try await complete(arguments)
+        case "update":
+            return try await update(arguments)
+        case "delete":
+            return try await delete(arguments)
         default:
             throw ToolFailure("Reminders cannot do \"\(action)\".")
         }
@@ -111,7 +115,8 @@ public struct RemindersTools: Sendable {
             title: title,
             notes: string(arguments["notes"]),
             list: string(arguments["list"]) ?? config.defaultRemindersList,
-            dueDate: dueDate
+            dueDate: dueDate,
+            url: string(arguments["url"])
         )
         let created = try await service.create(new)
         var rows = [
@@ -141,6 +146,71 @@ public struct RemindersTools: Sendable {
             auditRows: [
                 AuditDetailRow(label: "List", value: completed.list),
                 AuditDetailRow(label: "Completed", value: "\u{201C}\(completed.title)\u{201D}"),
+            ]
+        )
+    }
+
+    private func update(_ arguments: [String: Value]) async throws -> ToolOutcome {
+        guard let id = string(arguments["id"]), !id.isEmpty else {
+            throw ToolFailure("reminders_update needs the reminder id from reminders_list.")
+        }
+        var dueDate: Date?
+        var clearDue = false
+        if let raw = string(arguments["due"]) {
+            if raw.isEmpty {
+                clearDue = true
+            } else if let parsed = ToolDates.parseISO(raw) {
+                dueDate = parsed
+            } else {
+                throw ToolFailure(
+                    "The due date \u{201C}\(raw)\u{201D} did not parse. Send ISO 8601, like 2026-06-12T09:00:00, or an empty string to clear it."
+                )
+            }
+        }
+        let title = string(arguments["title"])
+        let notes = string(arguments["notes"])
+        let list = string(arguments["list"])
+        let completed = bool(arguments["completed"])
+        let url = string(arguments["url"])
+        var changed: [String] = []
+        if title != nil { changed.append("title") }
+        if dueDate != nil || clearDue { changed.append("due") }
+        if notes != nil { changed.append("notes") }
+        if list != nil { changed.append("list") }
+        if completed != nil { changed.append("completed") }
+        if url != nil { changed.append("url") }
+        guard !changed.isEmpty else {
+            throw ToolFailure(
+                "reminders_update needs something to change: a title, due, notes, list, url, or completed."
+            )
+        }
+        let updated = try await service.update(
+            ReminderUpdate(
+                id: id, title: title, notes: notes, list: list,
+                dueDate: dueDate, clearDue: clearDue, completed: completed, url: url))
+        return ToolOutcome(
+            content: try ToolJSON.encode(updated),
+            auditAction: "Updated the reminder \u{201C}\(updated.title)\u{201D}",
+            auditSummary: "Changed \(changed.joined(separator: ", ")) on one reminder.",
+            auditRows: [
+                AuditDetailRow(label: "List", value: updated.list),
+                AuditDetailRow(label: "Changed", value: changed.joined(separator: ", ")),
+            ]
+        )
+    }
+
+    private func delete(_ arguments: [String: Value]) async throws -> ToolOutcome {
+        guard let id = string(arguments["id"]), !id.isEmpty else {
+            throw ToolFailure("reminders_delete needs the reminder id from reminders_list.")
+        }
+        let deleted = try await service.delete(id: id)
+        return ToolOutcome(
+            content: try ToolJSON.encode(deleted),
+            auditAction: "Deleted the reminder \u{201C}\(deleted.title)\u{201D}",
+            auditSummary: "The reminder was deleted from the \(deleted.list) list.",
+            auditRows: [
+                AuditDetailRow(label: "List", value: deleted.list),
+                AuditDetailRow(label: "Deleted", value: "\u{201C}\(deleted.title)\u{201D}"),
             ]
         )
     }
