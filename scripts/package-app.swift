@@ -85,6 +85,7 @@ let artwork: [String: String] = [
     "messages.svg": "assets/app-icons/messages.svg",
     "contacts.svg": "assets/app-icons/contacts.svg",
     "calendar.svg": "assets/app-icons/calendar.svg",
+    "notes.svg": "assets/app-icons/notes.svg",
 ]
 for (name, path) in artwork {
     let source = root.appendingPathComponent(path)

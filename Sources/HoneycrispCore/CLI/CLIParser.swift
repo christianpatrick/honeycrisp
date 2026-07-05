@@ -66,9 +66,8 @@ public enum CLIParser {
                 for raw in arguments[index + 1].split(separator: ",") {
                     let name = raw.trimmingCharacters(in: .whitespaces).lowercased()
                     guard let app = AppID(rawValue: name) else {
-                        throw CLIError(
-                            "\u{201C}\(name)\u{201D} is not one of mail, reminders, calendar, messages, contacts."
-                        )
+                        let known = AppID.allCases.map(\.rawValue).joined(separator: ", ")
+                        throw CLIError("\u{201C}\(name)\u{201D} is not one of \(known).")
                     }
                     apps.append(app)
                 }
