@@ -226,13 +226,16 @@ public enum ToolRegistry {
         ),
         "reminders_create": Definition(
             description:
-                "Create a reminder, optionally with an ISO 8601 due date, a list, and notes.",
+                "Create a reminder, optionally with an ISO 8601 due date, a list, notes, and a URL.",
             schema: schema(
                 properties: [
                     "title": prop("string", "What the reminder says."),
                     "due": prop("string", "When it is due, ISO 8601, like 2026-06-12T09:00:00."),
                     "list": prop("string", "The list to put it on. Defaults to the configured list."),
                     "notes": prop("string", "Extra notes on the reminder."),
+                    "url": prop(
+                        "string",
+                        "A URL to attach, like a note link. Stored in the reminder's EventKit URL field; some Reminders versions do not show that field, so put a link in notes too when it must be visible."),
                 ],
                 required: ["title"])
         ),
@@ -258,6 +261,9 @@ public enum ToolRegistry {
                     "list": prop("string", "Move it to this list. reminders_lists names them."),
                     "completed": prop(
                         "boolean", "true marks it done, false reopens a completed reminder."),
+                    "url": prop(
+                        "string",
+                        "A URL to attach, like a note link, or an empty string to clear it. Stored in the reminder's EventKit URL field; some Reminders versions do not show that field, so put a link in notes too when it must be visible."),
                 ],
                 required: ["id"])
         ),

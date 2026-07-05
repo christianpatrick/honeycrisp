@@ -63,6 +63,9 @@ public struct EKRemindersService: RemindersServicing {
             reminder.dueDateComponents = Calendar.current.dateComponents(
                 [.year, .month, .day, .hour, .minute], from: dueDate)
         }
+        if let url = new.url, !url.isEmpty {
+            reminder.url = try Self.parsedURL(url)
+        }
         try store.save(reminder, commit: true)
         return Reminder(ek: reminder)
     }
@@ -99,8 +102,18 @@ public struct EKRemindersService: RemindersServicing {
         if let completed = update.completed {
             item.isCompleted = completed
         }
+        if let url = update.url {
+            item.url = url.isEmpty ? nil : try Self.parsedURL(url)
+        }
         try store.save(item, commit: true)
         return Reminder(ek: item)
+    }
+
+    private static func parsedURL(_ raw: String) throws -> URL {
+        guard let url = URL(string: raw) else {
+            throw ToolFailure("\u{201C}\(raw)\u{201D} is not a valid URL.")
+        }
+        return url
     }
 
     public func delete(id: String) async throws -> Reminder {
@@ -188,7 +201,8 @@ extension Reminder {
             notes: reminder.notes,
             list: reminder.calendar?.title ?? "Reminders",
             dueDate: reminder.dueDateComponents?.date,
-            completed: reminder.isCompleted
+            completed: reminder.isCompleted,
+            url: reminder.url?.absoluteString
         )
     }
 }

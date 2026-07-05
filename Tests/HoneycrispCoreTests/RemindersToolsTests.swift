@@ -145,6 +145,7 @@ struct RemindersToolsTests {
                 "due": "2026-06-12T09:00:00",
                 "list": "Personal",
                 "notes": "Ask about Friday",
+                "url": "applenotes:note/AAAA-1111",
             ],
             config: config())
         let created = await service.created
@@ -152,6 +153,7 @@ struct RemindersToolsTests {
         #expect(created.first?.title == "Call the dentist")
         #expect(created.first?.list == "Personal")
         #expect(created.first?.notes == "Ask about Friday")
+        #expect(created.first?.url == "applenotes:note/AAAA-1111")
         var components = DateComponents()
         components.year = 2026
         components.month = 6
@@ -285,6 +287,23 @@ struct RemindersToolsTests {
         #expect(update.clearDue)
         #expect(update.dueDate == nil)
         #expect(update.completed == false)
+    }
+
+    @Test("update carries a url, and an empty url clears it")
+    func updateURL() async throws {
+        let service = FakeRemindersService()
+        let tools = RemindersTools(service: service)
+        let outcome = try await tools.execute(
+            action: "update",
+            arguments: ["id": "r-1", "url": "applenotes:note/AAAA-1111"],
+            config: config())
+        let update = try #require(await service.updates.first)
+        #expect(update.url == "applenotes:note/AAAA-1111")
+        #expect(outcome.auditSummary.contains("url"))
+
+        _ = try await tools.execute(
+            action: "update", arguments: ["id": "r-1", "url": ""], config: config())
+        #expect(await service.updates.last?.url == "")
     }
 
     @Test("update needs an id and at least one change")

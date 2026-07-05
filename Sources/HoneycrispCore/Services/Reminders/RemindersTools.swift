@@ -115,7 +115,8 @@ public struct RemindersTools: Sendable {
             title: title,
             notes: string(arguments["notes"]),
             list: string(arguments["list"]) ?? config.defaultRemindersList,
-            dueDate: dueDate
+            dueDate: dueDate,
+            url: string(arguments["url"])
         )
         let created = try await service.create(new)
         var rows = [
@@ -170,21 +171,23 @@ public struct RemindersTools: Sendable {
         let notes = string(arguments["notes"])
         let list = string(arguments["list"])
         let completed = bool(arguments["completed"])
+        let url = string(arguments["url"])
         var changed: [String] = []
         if title != nil { changed.append("title") }
         if dueDate != nil || clearDue { changed.append("due") }
         if notes != nil { changed.append("notes") }
         if list != nil { changed.append("list") }
         if completed != nil { changed.append("completed") }
+        if url != nil { changed.append("url") }
         guard !changed.isEmpty else {
             throw ToolFailure(
-                "reminders_update needs something to change: a title, due, notes, list, or completed."
+                "reminders_update needs something to change: a title, due, notes, list, url, or completed."
             )
         }
         let updated = try await service.update(
             ReminderUpdate(
                 id: id, title: title, notes: notes, list: list,
-                dueDate: dueDate, clearDue: clearDue, completed: completed))
+                dueDate: dueDate, clearDue: clearDue, completed: completed, url: url))
         return ToolOutcome(
             content: try ToolJSON.encode(updated),
             auditAction: "Updated the reminder \u{201C}\(updated.title)\u{201D}",

@@ -62,6 +62,13 @@ struct RemindersIntegrationTests {
         #expect(moved.dueDate == due)
         #expect(moved.notes == "Updated by the integration tests.")
 
+        let linked = try await service.update(
+            ReminderUpdate(id: created.id, url: "https://honeycrisp.app/test"))
+        #expect(linked.url == "https://honeycrisp.app/test")
+
+        let unlinked = try await service.update(ReminderUpdate(id: created.id, url: ""))
+        #expect(unlinked.url == nil)
+
         let cleared = try await service.update(
             ReminderUpdate(id: created.id, clearDue: true, completed: true))
         #expect(cleared.dueDate == nil)

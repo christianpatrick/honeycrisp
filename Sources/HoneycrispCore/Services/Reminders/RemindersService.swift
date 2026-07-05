@@ -1,6 +1,8 @@
 import Foundation
 
-/// One reminder as the model sees it.
+/// One reminder as the model sees it. The url is the EventKit URL field;
+/// some Reminders versions do not display it in the app, so links that
+/// must be visible belong in notes too.
 public struct Reminder: Codable, Equatable, Sendable, Identifiable {
     public let id: String
     public let title: String
@@ -8,9 +10,11 @@ public struct Reminder: Codable, Equatable, Sendable, Identifiable {
     public let list: String
     public let dueDate: Date?
     public let completed: Bool
+    public let url: String?
 
     public init(
-        id: String, title: String, notes: String?, list: String, dueDate: Date?, completed: Bool
+        id: String, title: String, notes: String?, list: String, dueDate: Date?,
+        completed: Bool, url: String? = nil
     ) {
         self.id = id
         self.title = title
@@ -18,6 +22,7 @@ public struct Reminder: Codable, Equatable, Sendable, Identifiable {
         self.list = list
         self.dueDate = dueDate
         self.completed = completed
+        self.url = url
     }
 }
 
@@ -28,18 +33,23 @@ public struct NewReminder: Codable, Equatable, Sendable {
     /// nil means the configured default list, or the system default.
     public let list: String?
     public let dueDate: Date?
+    public let url: String?
 
-    public init(title: String, notes: String? = nil, list: String? = nil, dueDate: Date? = nil) {
+    public init(
+        title: String, notes: String? = nil, list: String? = nil, dueDate: Date? = nil,
+        url: String? = nil
+    ) {
         self.title = title
         self.notes = notes
         self.list = list
         self.dueDate = dueDate
+        self.url = url
     }
 }
 
 /// What reminders_update accepts: a partial change where nil means leave
-/// that field alone. An empty notes string clears the notes; clearDue
-/// removes the due date (HC-041).
+/// that field alone. Empty notes or url strings clear those fields;
+/// clearDue removes the due date (HC-041).
 public struct ReminderUpdate: Equatable, Sendable {
     public let id: String
     public let title: String?
@@ -48,10 +58,12 @@ public struct ReminderUpdate: Equatable, Sendable {
     public let dueDate: Date?
     public let clearDue: Bool
     public let completed: Bool?
+    public let url: String?
 
     public init(
         id: String, title: String? = nil, notes: String? = nil, list: String? = nil,
-        dueDate: Date? = nil, clearDue: Bool = false, completed: Bool? = nil
+        dueDate: Date? = nil, clearDue: Bool = false, completed: Bool? = nil,
+        url: String? = nil
     ) {
         self.id = id
         self.title = title
@@ -60,6 +72,7 @@ public struct ReminderUpdate: Equatable, Sendable {
         self.dueDate = dueDate
         self.clearDue = clearDue
         self.completed = completed
+        self.url = url
     }
 }
 
