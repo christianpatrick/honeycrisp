@@ -92,9 +92,9 @@ Failing tests first, fixture-driven, no TCC in unit tests:
 
 ## Acceptance criteria
 
-- [ ] `swift build` and `swift test` pass with the new suites.
-- [ ] The catalog holds twenty-five actions across six apps and only the two sends require approval.
-- [ ] notes_search, notes_folders, notes_read, and notes_link work against a fixture store, and against the real store under the integration flag.
-- [ ] notes_link returns `applenotes:note/<uuid>` plus the signed-in account email on this Mac.
-- [ ] notes_create and notes_append change real notes through Apple events under the integration flag, and notes_create's receipt links the new note.
-- [ ] The panel, onboarding, and packaging show Notes with its icon; AGENTS.md and README name six apps; the spec index records HC-040.
+- `swift build` and `swift test` pass with the new suites.
+- The catalog holds twenty-five actions across six apps and only the two sends require approval.
+- notes_search, notes_folders, notes_read, and notes_link work against a fixture store, and against the real store under the integration flag.
+- notes_link returns `applenotes:note/<uuid>` plus the signed-in account email on this Mac.
+- notes_create and notes_append change real notes through Apple events under the integration flag, and notes_create's receipt links the new note.
+- The panel, onboarding, and packaging show Notes with its icon; AGENTS.md and README name six apps; the spec index records HC-040.
