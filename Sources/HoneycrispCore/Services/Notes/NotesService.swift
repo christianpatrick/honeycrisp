@@ -92,6 +92,23 @@ public struct NoteScriptTarget: Sendable, Equatable {
     }
 }
 
+/// What notes_link reports back: the URL that opens the note on this Mac
+/// and on any device signed into the same iCloud account, plus who that
+/// account is for share workflows.
+public struct NoteLinkResult: Codable, Equatable, Sendable {
+    public let id: String
+    public let title: String
+    public let url: String
+    public let accountEmail: String?
+
+    public init(id: String, title: String, url: String, accountEmail: String?) {
+        self.id = id
+        self.title = title
+        self.url = url
+        self.accountEmail = accountEmail
+    }
+}
+
 /// What notes_create reports back. The id and url come from reading the
 /// new note back out of the store; when the row is not visible yet they
 /// degrade to nil rather than failing a create that already happened.
@@ -137,4 +154,82 @@ public protocol NotesDatabaseReading: Sendable {
     func scriptTarget(id: String) async throws -> NoteScriptTarget?
     /// Maps a Core Data primary key back to a note, for create receipts.
     func noteByPrimaryKey(_ primaryKey: Int64) async throws -> NoteSummary?
+}
+
+/// The Notes domain seam the translator talks to.
+public protocol NotesServicing: Sendable {
+    func search(
+        query: String?, folder: String?, since: Date?, until: Date?, pinnedOnly: Bool, limit: Int
+    ) async throws -> [NoteSummary]
+    func folders() async throws -> [NoteFolder]
+    func note(id: String) async throws -> NoteDetail?
+    func link(id: String) async throws -> NoteLinkResult
+    func create(title: String, body: String?, folder: String?) async throws -> NoteCreateReceipt
+    func append(id: String, body: String) async throws -> NoteAppendReceipt
+}
+
+/// The real composition: NoteStore.sqlite for reads, raw Apple events for
+/// writes, and the local iCloud account record for link results.
+public struct NotesService: NotesServicing {
+    private let reader: any NotesDatabaseReading
+    private let writer: any NoteWriting
+    private let account: any AppleAccountReading
+
+    public init(
+        reader: any NotesDatabaseReading,
+        writer: any NoteWriting,
+        account: any AppleAccountReading
+    ) {
+        self.reader = reader
+        self.writer = writer
+        self.account = account
+    }
+
+    /// The production wiring.
+    public init() {
+        let reader = NotesDatabase()
+        self.init(
+            reader: reader,
+            writer: AppleEventNoteWriter(targets: reader),
+            account: AppleAccount()
+        )
+    }
+
+    public func search(
+        query: String?, folder: String?, since: Date?, until: Date?, pinnedOnly: Bool, limit: Int
+    ) async throws -> [NoteSummary] {
+        try await reader.search(
+            query: query, folder: folder, since: since, until: until,
+            pinnedOnly: pinnedOnly, limit: limit)
+    }
+
+    public func folders() async throws -> [NoteFolder] {
+        try await reader.folders()
+    }
+
+    public func note(id: String) async throws -> NoteDetail? {
+        try await reader.note(id: id)
+    }
+
+    public func link(id: String) async throws -> NoteLinkResult {
+        guard let note = try await reader.note(id: id) else {
+            throw ToolFailure("No note matched that id. Use the id notes_search returns.")
+        }
+        return NoteLinkResult(
+            id: note.id,
+            title: note.title,
+            url: NoteLink.url(for: note.id),
+            accountEmail: account.primaryEmail()
+        )
+    }
+
+    public func create(title: String, body: String?, folder: String?) async throws
+        -> NoteCreateReceipt
+    {
+        try await writer.create(title: title, body: body, folder: folder)
+    }
+
+    public func append(id: String, body: String) async throws -> NoteAppendReceipt {
+        try await writer.append(id: id, body: body)
+    }
 }

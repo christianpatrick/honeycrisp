@@ -11,6 +11,7 @@ public struct ServiceExecutor: ToolExecutor {
     private let calendar: CalendarTools?
     private let messages: MessagesTools?
     private let mail: MailTools?
+    private let notes: NotesTools?
 
     public init(
         configProvider: @escaping @Sendable () -> HoneycrispConfig,
@@ -18,7 +19,8 @@ public struct ServiceExecutor: ToolExecutor {
         reminders: (any RemindersServicing)? = nil,
         calendar: (any CalendarServicing)? = nil,
         messages: (any MessagesServicing)? = nil,
-        mail: (any MailServicing)? = nil
+        mail: (any MailServicing)? = nil,
+        notes: (any NotesServicing)? = nil
     ) {
         self.configProvider = configProvider
         self.contacts = contacts.map(ContactsTools.init)
@@ -26,6 +28,7 @@ public struct ServiceExecutor: ToolExecutor {
         self.calendar = calendar.map(CalendarTools.init)
         self.messages = messages.map(MessagesTools.init)
         self.mail = mail.map(MailTools.init)
+        self.notes = notes.map(NotesTools.init)
     }
 
     /// The full production wiring with every real service.
@@ -38,7 +41,8 @@ public struct ServiceExecutor: ToolExecutor {
             reminders: EKRemindersService(),
             calendar: EKCalendarService(),
             messages: MessagesService(),
-            mail: MailService()
+            mail: MailService(),
+            notes: NotesService()
         )
     }
 
@@ -77,8 +81,11 @@ public struct ServiceExecutor: ToolExecutor {
             return try await mail.execute(
                 action: action, arguments: arguments, defaultLimit: config.defaultLimit)
         case .notes:
-            // Wired up later in HC-040; the sentence keeps partial builds honest.
-            throw ToolFailure("Notes is not wired up in this build.")
+            guard let notes else {
+                throw ToolFailure("Notes is not wired up in this build.")
+            }
+            return try await notes.execute(
+                action: action, arguments: arguments, defaultLimit: config.defaultLimit)
         }
     }
 }
