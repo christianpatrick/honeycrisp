@@ -393,6 +393,33 @@ public enum ToolRegistry {
                 ],
                 required: ["given_name"])
         ),
+        "contacts_update": Definition(
+            description:
+                "Update a contact in place. Only the fields you pass change. A phone or email replaces the contact's whole list with that one value; an empty string clears the field.",
+            schema: schema(
+                properties: [
+                    "id": prop("string", "The contact id from contacts_lookup."),
+                    "given_name": prop("string", "A new first name."),
+                    "family_name": prop("string", "A new last name."),
+                    "phone": prop(
+                        "string",
+                        "A new phone number, replacing all numbers, or an empty string to clear them."),
+                    "email": prop(
+                        "string",
+                        "A new email address, replacing all addresses, or an empty string to clear them."),
+                    "organization": prop(
+                        "string", "A new company or organization, or an empty string to clear it."),
+                ],
+                required: ["id"])
+        ),
+        "contacts_delete": Definition(
+            description: "Delete one contact card by id. This removes the card from Contacts.",
+            schema: schema(
+                properties: [
+                    "id": prop("string", "The contact id from contacts_lookup."),
+                ],
+                required: ["id"])
+        ),
     ]
 
     // MARK: - Schema helpers

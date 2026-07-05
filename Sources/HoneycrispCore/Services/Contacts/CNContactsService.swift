@@ -64,6 +64,57 @@ public struct CNContactsService: ContactsServicing {
         return Contact(cn: cn)
     }
 
+    public func update(_ update: ContactUpdate) async throws -> Contact {
+        let store = try await authorizedStore()
+        let cn = try mutableContact(id: update.id, in: store)
+        if let givenName = update.givenName {
+            cn.givenName = givenName
+        }
+        if let familyName = update.familyName {
+            cn.familyName = familyName
+        }
+        if let organization = update.organization {
+            cn.organizationName = organization
+        }
+        if let phone = update.phone {
+            cn.phoneNumbers =
+                phone.isEmpty
+                ? []
+                : [
+                    CNLabeledValue(
+                        label: CNLabelPhoneNumberMobile, value: CNPhoneNumber(stringValue: phone))
+                ]
+        }
+        if let email = update.email {
+            cn.emailAddresses =
+                email.isEmpty ? [] : [CNLabeledValue(label: CNLabelHome, value: email as NSString)]
+        }
+        let request = CNSaveRequest()
+        request.update(cn)
+        try store.execute(request)
+        return Contact(cn: cn)
+    }
+
+    public func delete(id: String) async throws -> Contact {
+        let store = try await authorizedStore()
+        let cn = try mutableContact(id: id, in: store)
+        let snapshot = Contact(cn: cn)
+        let request = CNSaveRequest()
+        request.delete(cn)
+        try store.execute(request)
+        return snapshot
+    }
+
+    private func mutableContact(id: String, in store: CNContactStore) throws -> CNMutableContact {
+        guard
+            let found = try? store.unifiedContact(withIdentifier: id, keysToFetch: Self.keys),
+            let mutable = found.mutableCopy() as? CNMutableContact
+        else {
+            throw ToolFailure("No contact matched the id \u{201C}\(id)\u{201D}.")
+        }
+        return mutable
+    }
+
     private func authorizedStore() async throws -> CNContactStore {
         let store = CNContactStore()
         switch CNContactStore.authorizationStatus(for: .contacts) {

@@ -40,6 +40,28 @@ private actor FakeContactsService: ContactsServicing {
             emails: new.email.map { [LabeledValue(label: "home", value: $0)] } ?? []
         )
     }
+
+    private(set) var updates: [ContactUpdate] = []
+    private(set) var deletedIDs: [String] = []
+
+    func update(_ update: ContactUpdate) async throws -> Contact {
+        updates.append(update)
+        return Contact(
+            id: update.id,
+            givenName: update.givenName ?? "Maya",
+            familyName: update.familyName ?? "Chen",
+            organization: update.organization,
+            phones: update.phone.map { [LabeledValue(label: "mobile", value: $0)] } ?? [],
+            emails: []
+        )
+    }
+
+    func delete(id: String) async throws -> Contact {
+        deletedIDs.append(id)
+        return Contact(
+            id: id, givenName: "Maya", familyName: "Chen",
+            organization: nil, phones: [], emails: [])
+    }
 }
 
 private let maya = Contact(
@@ -153,6 +175,59 @@ struct ContactsToolsTests {
         #expect(created.first?.organization == "Studio")
         #expect(outcome.auditAction.contains("Maya"))
         #expect(outcome.auditSummary.contains("Created one contact"))
+    }
+
+    @Test("update maps partial fields and reports what changed")
+    func update() async throws {
+        let service = FakeContactsService()
+        let tools = ContactsTools(service: service)
+        let outcome = try await tools.execute(
+            action: "update",
+            arguments: [
+                "id": "c-1",
+                "phone": "+15559990000",
+                "organization": "",
+            ],
+            defaultLimit: 20)
+        let update = try #require(await service.updates.first)
+        #expect(update.id == "c-1")
+        #expect(update.phone == "+15559990000")
+        #expect(update.organization == "")
+        #expect(update.givenName == nil)
+        #expect(update.email == nil)
+        #expect(outcome.auditAction == "Updated \u{201C}Maya Chen\u{201D} in Contacts")
+        #expect(outcome.auditSummary.contains("phone, organization"))
+    }
+
+    @Test("update needs an id and at least one change")
+    func updateValidation() async {
+        let tools = ContactsTools(service: FakeContactsService())
+        await #expect(throws: ToolFailure.self) {
+            _ = try await tools.execute(
+                action: "update", arguments: ["phone": "5"], defaultLimit: 20)
+        }
+        do {
+            _ = try await tools.execute(action: "update", arguments: ["id": "c-1"], defaultLimit: 20)
+            Issue.record("expected a ToolFailure")
+        } catch let failure as ToolFailure {
+            #expect(failure.message.contains("something to change"))
+        } catch {
+            Issue.record("unexpected error type: \(error)")
+        }
+    }
+
+    @Test("delete passes the id and audits who went away")
+    func delete() async throws {
+        let service = FakeContactsService()
+        let tools = ContactsTools(service: service)
+        let outcome = try await tools.execute(
+            action: "delete", arguments: ["id": "c-1"], defaultLimit: 20)
+        #expect(await service.deletedIDs == ["c-1"])
+        #expect(outcome.auditAction == "Deleted \u{201C}Maya Chen\u{201D} from Contacts")
+
+        await #expect(throws: ToolFailure.self) {
+            _ = try await tools.execute(action: "delete", arguments: [:], defaultLimit: 20)
+        }
     }
 
     @Test("an unknown contacts action is a failure")
