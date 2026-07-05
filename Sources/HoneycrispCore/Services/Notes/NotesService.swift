@@ -92,6 +92,40 @@ public struct NoteScriptTarget: Sendable, Equatable {
     }
 }
 
+/// What notes_create reports back. The id and url come from reading the
+/// new note back out of the store; when the row is not visible yet they
+/// degrade to nil rather than failing a create that already happened.
+public struct NoteCreateReceipt: Codable, Equatable, Sendable {
+    public let id: String?
+    public let url: String?
+    public let title: String
+    public let folder: String
+
+    public init(id: String?, url: String?, title: String, folder: String) {
+        self.id = id
+        self.url = url
+        self.title = title
+        self.folder = folder
+    }
+}
+
+/// What notes_append reports back.
+public struct NoteAppendReceipt: Codable, Equatable, Sendable {
+    public let id: String
+    public let title: String
+
+    public init(id: String, title: String) {
+        self.id = id
+        self.title = title
+    }
+}
+
+/// Sub-seam: the write side over Apple events (tier 3).
+public protocol NoteWriting: Sendable {
+    func create(title: String, body: String?, folder: String?) async throws -> NoteCreateReceipt
+    func append(id: String, body: String) async throws -> NoteAppendReceipt
+}
+
 /// Sub-seam: read-only access to the Notes store (tier 2 in the AGENTS.md
 /// hierarchy).
 public protocol NotesDatabaseReading: Sendable {
