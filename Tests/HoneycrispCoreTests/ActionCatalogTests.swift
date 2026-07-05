@@ -3,14 +3,15 @@ import HoneycrispCore
 
 @Suite("Action catalog")
 struct ActionCatalogTests {
-    @Test("twenty actions with the designed per-app counts")
+    @Test("twenty-five actions with the designed per-app counts")
     func actionCounts() {
-        #expect(ActionCatalog.all.count == 20)
+        #expect(ActionCatalog.all.count == 25)
         #expect(ActionCatalog.actions(for: .mail).count == 5)
         #expect(ActionCatalog.actions(for: .reminders).count == 4)
         #expect(ActionCatalog.actions(for: .calendar).count == 3)
         #expect(ActionCatalog.actions(for: .messages).count == 5)
         #expect(ActionCatalog.actions(for: .contacts).count == 3)
+        #expect(ActionCatalog.actions(for: .notes).count == 5)
     }
 
     @Test("the conversation history action is a default-on read")
@@ -61,10 +62,46 @@ struct ActionCatalogTests {
     @Test("app display data carries the designed names and blurbs")
     func appDescriptors() throws {
         #expect(
-            ActionCatalog.apps.map(\.id) == [.mail, .reminders, .calendar, .messages, .contacts])
+            ActionCatalog.apps.map(\.id) == [
+                .mail, .reminders, .calendar, .messages, .contacts, .notes,
+            ])
         let mail = try #require(ActionCatalog.apps.first { $0.id == .mail })
         #expect(mail.name == "Mail")
         #expect(mail.blurb == "Search, read, and draft mail.")
+        let notes = try #require(ActionCatalog.apps.first { $0.id == .notes })
+        #expect(notes.name == "Notes")
+        #expect(notes.blurb == "Search, read, and capture notes.")
+    }
+
+    @Test("notes actions match the HC-040 spec")
+    func notesActions() throws {
+        let search = try #require(ActionCatalog.descriptor(app: .notes, action: "search"))
+        #expect(search.label == "Search notes")
+        #expect(search.kind == .read)
+        #expect(search.defaultOn)
+        #expect(search.requiresApproval == false)
+
+        let link = try #require(ActionCatalog.descriptor(app: .notes, action: "link"))
+        #expect(link.label == "Copy a note link")
+        #expect(link.kind == .read)
+        #expect(link.defaultOn)
+        #expect(link.requiresApproval == false)
+
+        let read = try #require(ActionCatalog.descriptor(app: .notes, action: "read"))
+        #expect(read.label == "Read a note")
+        #expect(read.kind == .read)
+
+        let create = try #require(ActionCatalog.descriptor(app: .notes, action: "create"))
+        #expect(create.label == "Create a note")
+        #expect(create.kind == .write)
+        #expect(create.defaultOn == false)
+        #expect(create.requiresApproval == false)
+
+        let append = try #require(ActionCatalog.descriptor(app: .notes, action: "append"))
+        #expect(append.label == "Append to a note")
+        #expect(append.kind == .write)
+        #expect(append.defaultOn == false)
+        #expect(append.requiresApproval == false)
     }
 
     @Test("calendar actions match the spec")

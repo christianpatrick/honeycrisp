@@ -69,7 +69,7 @@ struct ToolGatewayTests {
         )
     }
 
-    @Test("the default config is read-only and lists exactly the fourteen read tools")
+    @Test("the default config is read-only and lists exactly the seventeen read tools")
     func defaultListing() {
         let gateway = makeGateway(audit: AuditStore(fileURL: tempAuditURL()))
         let names = Set(gateway.listTools().map(\.name))
@@ -80,6 +80,7 @@ struct ToolGatewayTests {
                 "calendar_today", "calendar_list", "calendar_calendars",
                 "messages_recent", "messages_search", "messages_history",
                 "contacts_lookup", "contacts_fields",
+                "notes_search", "notes_read", "notes_link",
             ])
     }
 

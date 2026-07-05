@@ -76,6 +76,9 @@ public struct ServiceExecutor: ToolExecutor {
             }
             return try await mail.execute(
                 action: action, arguments: arguments, defaultLimit: config.defaultLimit)
+        case .notes:
+            // Wired up later in HC-040; the sentence keeps partial builds honest.
+            throw ToolFailure("Notes is not wired up in this build.")
         }
     }
 }
