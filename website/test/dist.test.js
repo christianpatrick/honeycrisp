@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { existsSync, readFileSync, readdirSync } from "node:fs";
+import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -53,6 +53,21 @@ test("the letter lives at the root of honeycrisp.app", { skip }, () => {
     "the canonical URL must be the custom domain",
   );
   assert.ok(!html.includes("/honeycrisp/_astro/"), "the project-page base path must be gone");
+});
+
+test("the social card is a built jpeg, not the raw png", { skip }, () => {
+  const html = readFileSync(distIndex, "utf8");
+  const match = html.match(
+    /property="og:image" content="https:\/\/honeycrisp\.app(\/_astro\/[^"]+\.jpg)"/,
+  );
+  assert.ok(match, "og:image must be an absolute URL to a hashed jpeg under /_astro/");
+  const card = join(distDir, match[1]);
+  assert.ok(existsSync(card), `the card ${match[1]} must exist in dist`);
+  const size = statSync(card).size;
+  assert.ok(size < 400 * 1024, `the card is ${size} bytes, the budget is 400 KB`);
+  assert.ok(html.includes('property="og:image:width" content="2400"'), "og:image:width is missing");
+  assert.ok(html.includes('property="og:image:height" content="1260"'), "og:image:height is missing");
+  assert.ok(!existsSync(join(distDir, "og.png")), "the raw png must no longer ship");
 });
 
 test("plausible is initialized for honeycrisp.app", { skip }, () => {

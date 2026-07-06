@@ -1,7 +1,8 @@
 ---
-import { Image } from "astro:assets";
+import { Image, getImage } from "astro:assets";
 import "../styles/global.css";
 import portrait from "../assets/christian.jpg";
+import ogSource from "../assets/og.png";
 // The brand artwork is the app's own: these imports reach out of website/
 // into the repository's assets/ folder, the single source of truth.
 import favicon from "../../../assets/marks/honeycrisp-icon.svg";
@@ -45,8 +46,12 @@ const screenshots = Object.entries(shotModules)
 
 const repo = "https://github.com/christianpatrick/honeycrisp";
 const canonical = new URL("/", Astro.site);
-// Christian's own social card, uploaded to public/ alongside the build.
-const ogImage = new URL("/og.png", Astro.site);
+// Christian's own social card. The full-resolution png stays in src/assets
+// and the build derives the shipped jpeg from it, two times the standard
+// 1200 by 630 card size (HC-042). A meta tag needs a URL rather than an
+// Image component, so this goes through getImage.
+const ogCard = await getImage({ src: ogSource, width: 2400, format: "jpg" });
+const ogImage = new URL(ogCard.src, Astro.site);
 const description =
   "A fast, private, and transparent MCP server for your Apple apps. Honeycrisp gives any AI assistant native access to Mail, Reminders, Calendar, Messages, Contacts, and Notes, and everything stays on your Mac.";
 
@@ -102,6 +107,8 @@ const apps = [
     <meta property="og:description" content="Your assistant, fully fluent in your Mac. A fast, private MCP server for Mail, Reminders, Calendar, Messages, Contacts, and Notes." />
     <meta property="og:url" content={canonical} />
     <meta property="og:image" content={ogImage} />
+    <meta property="og:image:width" content={ogCard.attributes.width} />
+    <meta property="og:image:height" content={ogCard.attributes.height} />
     <meta name="twitter:card" content="summary_large_image" />
   </head>
   <body>
