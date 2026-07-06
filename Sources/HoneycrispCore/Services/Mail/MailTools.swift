@@ -26,9 +26,77 @@ public struct MailTools: Sendable {
             return try await compose(arguments, send: true)
         case "mark_read":
             return try await markRead(arguments, defaultLimit: defaultLimit)
+        case "update":
+            return try await update(arguments, defaultLimit: defaultLimit)
+        case "delete":
+            return try await delete(arguments, defaultLimit: defaultLimit)
         default:
             throw ToolFailure("Mail cannot do \"\(action)\".")
         }
+    }
+
+    /// One message by message_id, or a whole conversation by thread_id.
+    private func messageTargets(
+        _ arguments: [String: Value], defaultLimit: Int, toolName: String
+    ) async throws -> (ids: [String], what: String) {
+        if let messageID = string(arguments["message_id"]), !messageID.isEmpty {
+            return ([messageID], "the message")
+        }
+        if let threadID = string(arguments["thread_id"]), !threadID.isEmpty {
+            let thread = try await service.thread(id: threadID, limit: max(defaultLimit, 100))
+            return (thread.messages.map(\.id), "the thread \u{201C}\(thread.subject)\u{201D}")
+        }
+        throw ToolFailure(
+            "\(toolName) needs a message_id from mail_search, or a thread_id for the whole conversation."
+        )
+    }
+
+    private func update(_ arguments: [String: Value], defaultLimit: Int) async throws
+        -> ToolOutcome
+    {
+        let read = bool(arguments["read"])
+        let flagged = bool(arguments["flagged"])
+        guard read != nil || flagged != nil else {
+            throw ToolFailure(
+                "mail_update needs read or flagged: what to change on the message.")
+        }
+        let (ids, what) = try await messageTargets(
+            arguments, defaultLimit: defaultLimit, toolName: "mail_update")
+        let changed = try await service.setState(messageIDs: ids, read: read, flagged: flagged)
+        var changes: [String] = []
+        if let read { changes.append(read ? "read" : "unread") }
+        if let flagged { changes.append(flagged ? "flagged" : "unflagged") }
+        let state = changes.joined(separator: ", ")
+        return ToolOutcome(
+            content: try ToolJSON.encode(["updated": changed]),
+            auditAction: "Updated \(what)",
+            auditSummary:
+                "Set \(state) on \(changed) message\(changed == 1 ? "" : "s"). Mail syncs the change to your mail server.",
+            auditRows: [
+                AuditDetailRow(label: "Changed", value: state),
+                AuditDetailRow(
+                    label: "Messages", value: "\(changed) message\(changed == 1 ? "" : "s")"),
+            ]
+        )
+    }
+
+    private func delete(_ arguments: [String: Value], defaultLimit: Int) async throws
+        -> ToolOutcome
+    {
+        let (ids, what) = try await messageTargets(
+            arguments, defaultLimit: defaultLimit, toolName: "mail_delete")
+        let deleted = try await service.delete(messageIDs: ids)
+        return ToolOutcome(
+            content: try ToolJSON.encode(["deleted": deleted]),
+            auditAction: "Deleted \(what)",
+            auditSummary:
+                "Moved \(deleted) message\(deleted == 1 ? "" : "s") to Mail's Trash. Mail syncs the change to your mail server.",
+            auditRows: [
+                AuditDetailRow(
+                    label: "Deleted", value: "\(deleted) message\(deleted == 1 ? "" : "s")"),
+                AuditDetailRow(label: "Where", value: "Mail's Trash"),
+            ]
+        )
     }
 
     private func markRead(_ arguments: [String: Value], defaultLimit: Int) async throws

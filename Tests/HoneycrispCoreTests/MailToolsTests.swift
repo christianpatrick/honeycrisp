@@ -81,6 +81,19 @@ private actor FakeMailService: MailServicing {
         markedRead.append(messageIDs)
         return messageIDs.count
     }
+
+    private(set) var stateCalls: [(ids: [String], read: Bool?, flagged: Bool?)] = []
+    private(set) var deletions: [[String]] = []
+
+    func setState(messageIDs: [String], read: Bool?, flagged: Bool?) async throws -> Int {
+        stateCalls.append((messageIDs, read, flagged))
+        return messageIDs.count
+    }
+
+    func delete(messageIDs: [String]) async throws -> Int {
+        deletions.append(messageIDs)
+        return messageIDs.count
+    }
 }
 
 @Suite("Mail tools")
@@ -278,5 +291,73 @@ struct MailToolsTests {
         let outcome = try await executor.execute(
             app: .mail, action: "search", arguments: ["query": "Q3"])
         #expect(outcome.content.contains("Q3 planning"))
+    }
+
+    @Test("update sets read and flag state on one message")
+    func update() async throws {
+        let service = FakeMailService()
+        let tools = MailTools(service: service)
+        let outcome = try await tools.execute(
+            action: "update",
+            arguments: ["message_id": "101", "read": false, "flagged": true],
+            defaultLimit: 20)
+        let call = try #require(await service.stateCalls.first)
+        #expect(call.ids == ["101"])
+        #expect(call.read == false)
+        #expect(call.flagged == true)
+        #expect(outcome.auditAction == "Updated the message")
+        #expect(outcome.auditSummary.contains("unread, flagged"))
+    }
+
+    @Test("update over a thread resolves every message id")
+    func updateThread() async throws {
+        let service = FakeMailService()
+        let tools = MailTools(service: service)
+        _ = try await tools.execute(
+            action: "update",
+            arguments: ["thread_id": "9001", "flagged": false],
+            defaultLimit: 20)
+        let call = try #require(await service.stateCalls.first)
+        #expect(call.ids == ["101", "102"])
+        #expect(call.read == nil)
+        #expect(call.flagged == false)
+    }
+
+    @Test("update needs a target and at least one of read or flagged")
+    func updateValidation() async {
+        let tools = MailTools(service: FakeMailService())
+        await #expect(throws: ToolFailure.self) {
+            _ = try await tools.execute(
+                action: "update", arguments: ["read": true], defaultLimit: 20)
+        }
+        do {
+            _ = try await tools.execute(
+                action: "update", arguments: ["message_id": "101"], defaultLimit: 20)
+            Issue.record("expected a ToolFailure")
+        } catch let failure as ToolFailure {
+            #expect(failure.message.contains("read or flagged"))
+        } catch {
+            Issue.record("unexpected error type: \(error)")
+        }
+    }
+
+    @Test("delete moves a message or a whole thread to the Trash")
+    func delete() async throws {
+        let service = FakeMailService()
+        let tools = MailTools(service: service)
+        let outcome = try await tools.execute(
+            action: "delete", arguments: ["message_id": "101"], defaultLimit: 20)
+        #expect(await service.deletions == [["101"]])
+        #expect(outcome.auditAction == "Deleted the message")
+        #expect(outcome.auditSummary.contains("Trash"))
+
+        _ = try await tools.execute(
+            action: "delete", arguments: ["thread_id": "9001"], defaultLimit: 20)
+        #expect(await service.deletions.count == 2)
+        #expect(await service.deletions.last == ["101", "102"])
+
+        await #expect(throws: ToolFailure.self) {
+            _ = try await tools.execute(action: "delete", arguments: [:], defaultLimit: 20)
+        }
     }
 }
