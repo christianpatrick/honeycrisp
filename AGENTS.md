@@ -38,7 +38,7 @@ Honeycrisp is a local MCP server for macOS that gives any MCP client fast, priva
 
 ## Process rules
 
-1. Spec first. Every task starts as .specs/HC-NNN-slug.md using the template in .specs/README.md. Specs reference their task number HC-NNN.
+1. Spec first. Every task starts as .specs/HC-NNN-slug.md with the sections Why, Scope, Out of scope, Design, Test plan, and Acceptance criteria. Specs reference their task number HC-NNN. There is no spec index and no status field: a spec's state is its pull request.
 2. TDD, strictly. Write the failing test, run it, and read the failure before writing production code. Then make it pass and run it again. Record the red evidence in the commit body as a "Red:" line. Scaffolding, assets, and docs are exempt; behavior is not.
 3. Meaningful tests only. Test observable behavior through public API. Put system frameworks behind protocols and fake them; never sleep and hope. Tests that need real TCC grants are integration tests, gated behind HONEYCRISP_INTEGRATION=1, and run locally on a granted machine rather than in CI.
 4. Conventional commits per https://www.conventionalcommits.org/en/v1.0.0/. Commit directly to main. Keep commits small and logical.
