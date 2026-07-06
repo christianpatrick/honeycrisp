@@ -483,7 +483,7 @@ public enum ToolRegistry {
         ),
         "notes_link": Definition(
             description:
-                "Copy the link to a note. The URL opens the note in Apple Notes on this Mac and on the user's other devices signed into the same iCloud account; paste it into a reminder, an event, or anywhere a way back to the note helps. Also returns the signed-in iCloud account email for share workflows.",
+                "Copy the link to a note. The URL opens the note in Apple Notes on this Mac and on the user's other devices signed into the same iCloud account; put it in a reminder's or event's url field, or anywhere a way back to the note helps. Also returns the signed-in iCloud account email for share workflows.",
             schema: schema(
                 properties: [
                     "id": prop("string", "The note id from notes_search."),
