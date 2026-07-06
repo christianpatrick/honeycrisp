@@ -11,7 +11,7 @@ Honeycrisp is a small menu bar app with a bundled `honeycrisp` command line brid
 
 ## What it can reach today
 
-Honeycrisp speaks to five of the apps I live in every day. Each one is a real, first-class connection rather than a thin wrapper.
+Honeycrisp speaks to six of the apps I live in every day. Each one is a real, first-class connection rather than a thin wrapper.
 
 | App | What Honeycrisp can do |
 | --- | --- |
@@ -20,6 +20,7 @@ Honeycrisp speaks to five of the apps I live in every day. Each one is a real, f
 | <img src="assets/app-icons/calendar.svg" width="20" align="center"> **Calendar** | See what is on today, look ahead at the week, put new events on the books, and move them when plans change. |
 | <img src="assets/app-icons/messages.svg" width="20" align="center"> **Messages** | Catch up on the threads you missed and send a reply without reaching for your phone. |
 | <img src="assets/app-icons/contacts.svg" width="20" align="center"> **Contacts** | Look someone up, fix a misspelled name, or save a new face the moment it comes up. |
+| <img src="assets/app-icons/notes.svg" width="20" align="center"> **Notes** | Search and read your notes, capture new ones, add to a running list, and copy a link to any note so a reminder can point right back at it. |
 
 > [!TIP]
 > If there is an app you wish Honeycrisp could communicate with, [open an issue](https://github.com/christianpatrick/honeycrisp/issues/new) and tell me which one!
@@ -60,7 +61,7 @@ Either way, every request flows through the one app you granted access to, shows
 
 ## Configuration
 
-By default Honeycrisp exposes all five apps in read-only mode. You can narrow that down with flags on the `serve` command or in the menu bar app directly.
+By default Honeycrisp exposes all six apps in read-only mode. You can narrow that down with flags on the `serve` command or in the menu bar app directly.
 
 | Option | Default | What it does |
 | --- | --- | --- |

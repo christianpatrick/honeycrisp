@@ -1,12 +1,13 @@
 import Foundation
 
-/// The four Apple apps Honeycrisp can reach.
+/// The Apple apps Honeycrisp can reach.
 public enum AppID: String, CaseIterable, Codable, Sendable, Hashable {
     case mail
     case reminders
     case calendar
     case messages
     case contacts
+    case notes
 }
 
 extension AppID: CodingKeyRepresentable {}
@@ -46,6 +47,7 @@ public enum ActionCatalog {
         AppDescriptor(id: .calendar, name: "Calendar", blurb: "See your schedule and add events."),
         AppDescriptor(id: .messages, name: "Messages", blurb: "Read recent texts and send replies."),
         AppDescriptor(id: .contacts, name: "Contacts", blurb: "Look up people you know."),
+        AppDescriptor(id: .notes, name: "Notes", blurb: "Search, read, and capture notes."),
     ]
 
     public static let all: [ActionDescriptor] = [
@@ -77,6 +79,11 @@ public enum ActionCatalog {
         ActionDescriptor(app: .contacts, id: "create", label: "Add a contact", kind: .write, defaultOn: false, requiresApproval: false),
         ActionDescriptor(app: .contacts, id: "update", label: "Update a contact", kind: .write, defaultOn: false, requiresApproval: false),
         ActionDescriptor(app: .contacts, id: "delete", label: "Delete a contact", kind: .write, defaultOn: false, requiresApproval: false),
+        ActionDescriptor(app: .notes, id: "search", label: "Search notes", kind: .read, defaultOn: true, requiresApproval: false),
+        ActionDescriptor(app: .notes, id: "read", label: "Read a note", kind: .read, defaultOn: true, requiresApproval: false),
+        ActionDescriptor(app: .notes, id: "link", label: "Copy a note link", kind: .read, defaultOn: true, requiresApproval: false),
+        ActionDescriptor(app: .notes, id: "create", label: "Create a note", kind: .write, defaultOn: false, requiresApproval: false),
+        ActionDescriptor(app: .notes, id: "append", label: "Append to a note", kind: .write, defaultOn: false, requiresApproval: false),
     ]
 
     public static func actions(for app: AppID) -> [ActionDescriptor] {

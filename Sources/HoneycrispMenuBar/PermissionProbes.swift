@@ -5,10 +5,10 @@ import Foundation
 import HoneycrispCore
 import SQLite3
 
-/// The real macOS grants behind the onboarding's four rows. Contacts and
-/// Reminders can prompt in place; Mail and Messages ride on Full Disk
-/// Access, which only System Settings can grant; the two Apple-event
-/// targets prompt for Automation on first use.
+/// The real macOS grants behind the onboarding's access rows. Contacts,
+/// Reminders, and Calendar can prompt in place; Mail, Messages, and Notes
+/// ride on Full Disk Access, which only System Settings can grant; the
+/// Apple-event targets prompt for Automation on first use.
 enum PermissionProbes {
     static func contactsGranted() -> Bool {
         CNContactStore.authorizationStatus(for: .contacts) == .authorized
@@ -68,4 +68,5 @@ enum PermissionProbes {
 
     static let messagesBundleID = "com.apple.MobileSMS"
     static let mailBundleID = "com.apple.mail"
+    static let notesBundleID = "com.apple.Notes"
 }

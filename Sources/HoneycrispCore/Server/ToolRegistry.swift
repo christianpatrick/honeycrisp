@@ -48,6 +48,7 @@ public enum ToolRegistry {
         ("mail_mailboxes", .mail, "search", "mailboxes"),
         ("reminders_lists", .reminders, "list", "lists"),
         ("calendar_calendars", .calendar, "list", "calendars"),
+        ("notes_folders", .notes, "search", "folders"),
     ]
 
     private static func makeAlias(
@@ -453,6 +454,64 @@ public enum ToolRegistry {
                     "id": prop("string", "The contact id from contacts_lookup."),
                 ],
                 required: ["id"])
+        ),
+        "notes_search": Definition(
+            description:
+                "Find notes in Apple Notes. Filters compose: keyword, folder, a time window, and pinned only all work alone or together, and no filters at all returns the latest notes. Matches titles and snippets; notes_read returns a note's full text. Returns summaries with ids for notes_read and notes_link.",
+            schema: schema(
+                properties: [
+                    "query": prop("string", "Words to look for in note titles and snippets."),
+                    "folder": prop("string", "Limit to one folder. notes_folders lists the names."),
+                    "since": prop("string", "Only notes modified on or after this ISO 8601 time."),
+                    "until": prop("string", "Only notes modified before this ISO 8601 time."),
+                    "pinned_only": prop("boolean", "Only pinned notes."),
+                    "limit": prop("integer", "The most results to return."),
+                ])
+        ),
+        "notes_folders": Definition(
+            description: "List the Notes folder names with their accounts and note counts, for the folder arguments.",
+            schema: schema(properties: [:])
+        ),
+        "notes_read": Definition(
+            description:
+                "Read one note in full as plain text. A password protected note returns its details with locked true and no text.",
+            schema: schema(
+                properties: [
+                    "id": prop("string", "The note id from notes_search."),
+                ],
+                required: ["id"])
+        ),
+        "notes_link": Definition(
+            description:
+                "Copy the link to a note. The URL opens the note in Apple Notes on this Mac and on the user's other devices signed into the same iCloud account; put it in a reminder's or event's url field, or anywhere a way back to the note helps. Also returns the signed-in iCloud account email for share workflows.",
+            schema: schema(
+                properties: [
+                    "id": prop("string", "The note id from notes_search."),
+                ],
+                required: ["id"])
+        ),
+        "notes_create": Definition(
+            description:
+                "Create a note in Apple Notes. The title becomes the note's first line. Returns the new note's id and link when the store is readable.",
+            schema: schema(
+                properties: [
+                    "title": prop("string", "What the note is called."),
+                    "body": prop("string", "The note text under the title."),
+                    "folder": prop(
+                        "string",
+                        "An existing folder to put it in. notes_folders lists the names. Defaults to your default folder."),
+                ],
+                required: ["title"])
+        ),
+        "notes_append": Definition(
+            description:
+                "Append paragraphs to the end of an existing note. Password protected notes and notes with attachments are refused, so nothing is damaged.",
+            schema: schema(
+                properties: [
+                    "id": prop("string", "The note id from notes_search."),
+                    "body": prop("string", "The text to add."),
+                ],
+                required: ["id", "body"])
         ),
     ]
 

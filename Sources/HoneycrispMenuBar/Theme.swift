@@ -12,8 +12,8 @@ enum Theme {
     /// segment. Accent colors never touch these.
     static let segmentTrack = Color.secondary.opacity(0.12)
 
-    /// Fallback SF Symbols and tints for the five apps when the brand SVGs
-    /// are not bundled (bare swift run).
+    /// Fallback SF Symbols and tints for the apps when the brand SVGs are
+    /// not bundled (bare swift run).
     static func fallbackIcon(for app: AppID) -> (symbol: String, tint: Color) {
         switch app {
         case .mail: return ("envelope.fill", Color(red: 0.10, green: 0.46, blue: 0.95))
@@ -21,6 +21,7 @@ enum Theme {
         case .calendar: return ("calendar", Theme.red)
         case .messages: return ("message.fill", Color(red: 0.22, green: 0.78, blue: 0.35))
         case .contacts: return ("person.crop.square.fill", Color(white: 0.55))
+        case .notes: return ("note.text", Color(red: 0.88, green: 0.64, blue: 0.23))
         }
     }
 }

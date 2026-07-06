@@ -174,6 +174,13 @@ private struct AccessStep: View {
                         contacts = await PermissionProbes.requestContacts()
                     }
                 }
+                AccessRow(
+                    app: .notes,
+                    blurb: "Needs Full Disk Access to read your notes.",
+                    granted: fullDisk
+                ) {
+                    PermissionProbes.openFullDiskSettings()
+                }
             }
         }
         .task {

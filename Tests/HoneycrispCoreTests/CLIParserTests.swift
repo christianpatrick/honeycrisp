@@ -13,6 +13,9 @@ struct CLIParserTests {
         #expect(
             try CLIParser.parse(["serve", "--apps", "mail,reminders", "--read-only"])
                 == .serve(ServeOptions(apps: [.mail, .reminders], readOnly: true)))
+        #expect(
+            try CLIParser.parse(["serve", "--apps", "notes"])
+                == .serve(ServeOptions(apps: [.notes])))
     }
 
     @Test("version and help parse")
