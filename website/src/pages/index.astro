@@ -46,9 +46,9 @@ const screenshots = Object.entries(shotModules)
 const repo = "https://github.com/christianpatrick/honeycrisp";
 const canonical = new URL("/", Astro.site);
 // Christian's own social card, uploaded to public/ alongside the build.
-const ogImage = new URL("/og.jpg", Astro.site);
+const ogImage = new URL("/og.png", Astro.site);
 const description =
-  "A fast, private, and transparent MCP server for your Apple apps. Honeycrisp gives any AI assistant native access to Mail, Reminders, Calendar, Messages, and Contacts, and everything stays on your Mac.";
+  "A fast, private, and transparent MCP server for your Apple apps. Honeycrisp gives any AI assistant native access to Mail, Reminders, Calendar, Messages, Contacts, and Notes, and everything stays on your Mac.";
 
 const apps = [
   {
@@ -99,7 +99,7 @@ const apps = [
     <meta property="og:type" content="website" />
     <meta property="og:site_name" content="Honeycrisp" />
     <meta property="og:title" content="Honeycrisp" />
-    <meta property="og:description" content="Your assistant, fully fluent in your Mac. A fast, private MCP server for Mail, Reminders, Calendar, Messages, and Contacts." />
+    <meta property="og:description" content="Your assistant, fully fluent in your Mac. A fast, private MCP server for Mail, Reminders, Calendar, Messages, Contacts, and Notes." />
     <meta property="og:url" content={canonical} />
     <meta property="og:image" content={ogImage} />
     <meta name="twitter:card" content="summary_large_image" />
