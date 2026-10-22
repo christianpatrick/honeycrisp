@@ -11,7 +11,8 @@ private let alexSummary = MailMessageSummary(
     fromName: "Alex Rivera",
     date: Date(timeIntervalSince1970: 1_750_000_000),
     mailbox: "INBOX",
-    read: true
+    read: true,
+    link: "message://%3Calex-101@studio.com%3E"
 )
 
 private actor FakeMailService: MailServicing {
@@ -20,6 +21,7 @@ private actor FakeMailService: MailServicing {
           unreadOnly: Bool, limit: Int)] = []
     private(set) var mailboxCalls = 0
     private(set) var threadCalls: [(id: String, limit: Int)] = []
+    private(set) var indexedThreadCalls: [(id: String, limit: Int)] = []
     private(set) var summaryCalls: [String] = []
     private(set) var drafts: [MailDraft] = []
     private(set) var sends: [MailDraft] = []
@@ -42,6 +44,7 @@ private actor FakeMailService: MailServicing {
     var summaryResult: MailMessageSummary?
 
     func setSearchResult(_ result: [MailMessageSummary]) { searchResult = result }
+    func setThreadResult(_ result: MailThread) { threadResult = result }
     func setSummaryResult(_ result: MailMessageSummary?) { summaryResult = result }
 
     func search(
@@ -59,6 +62,11 @@ private actor FakeMailService: MailServicing {
 
     func thread(id: String, limit: Int) async throws -> MailThread {
         threadCalls.append((id, limit))
+        return threadResult
+    }
+
+    func indexedThread(id: String, limit: Int) async throws -> MailThread {
+        indexedThreadCalls.append((id, limit))
         return threadResult
     }
 
@@ -113,7 +121,22 @@ struct MailToolsTests {
         #expect(calls.first?.limit == 5)
         let decoded = try ToolJSON.decode([MailMessageSummary].self, from: outcome.content)
         #expect(decoded == [alexSummary])
+        #expect(outcome.content.contains(#""link":"message://%3Calex-101@studio.com%3E""#))
         #expect(outcome.auditAction.contains("Q3"))
+    }
+
+    @Test("a row without a Message-ID leaves the link out of the JSON")
+    func searchWithoutLink() async throws {
+        let service = FakeMailService()
+        await service.setSearchResult([
+            MailMessageSummary(
+                id: "103", threadId: "9002", subject: "Lunch", from: "maya@studio.com",
+                fromName: "Maya Chen", date: Date(timeIntervalSince1970: 1_750_001_200),
+                mailbox: "INBOX", read: false)
+        ])
+        let tools = MailTools(service: service)
+        let outcome = try await tools.execute(action: "search", arguments: [:], defaultLimit: 20)
+        #expect(!outcome.content.contains("link"))
     }
 
     @Test("search is filters-first and no filters means browse the latest")
@@ -156,12 +179,39 @@ struct MailToolsTests {
         #expect(await service.threadCalls.first?.id == "9001")
         #expect(outcome.auditAction.contains("Re: Q3 planning"))
         #expect(outcome.auditSummary.contains("Returned the subject and 2 message bodies"))
+        #expect(!outcome.auditSummary.contains("downloaded"))
         let decoded = try ToolJSON.decode(MailThread.self, from: outcome.content)
         #expect(decoded.messages.count == 2)
 
         await #expect(throws: ToolFailure.self) {
             _ = try await tools.execute(action: "read", arguments: [:], defaultLimit: 20)
         }
+    }
+
+    @Test("read says when Mail downloaded bodies it did not have yet")
+    func readWithDownloads() async throws {
+        let service = FakeMailService()
+        await service.setThreadResult(
+            MailThread(
+                id: "9001", subject: "Re: Q3 planning",
+                participants: ["alex@studio.com", "me@me.com"],
+                messages: [
+                    MailMessage(
+                        id: "101", from: "alex@studio.com", fromName: "Alex Rivera",
+                        to: ["me@me.com"], date: Date(timeIntervalSince1970: 1_750_000_000),
+                        body: "Planning looks good.",
+                        link: "message://%3Calex-101@studio.com%3E")
+                ],
+                downloadedBodies: 1))
+        let tools = MailTools(service: service)
+        let outcome = try await tools.execute(
+            action: "read", arguments: ["thread_id": "9001"], defaultLimit: 20)
+        #expect(outcome.auditSummary.contains("Mail downloaded 1 body it did not have yet."))
+        #expect(outcome.auditSummary.hasSuffix("Nothing was modified."))
+        #expect(outcome.auditRows.contains(AuditDetailRow(label: "Downloaded", value: "1 body")))
+        #expect(outcome.content.contains(#""link":"message://%3Calex-101@studio.com%3E""#))
+        #expect(!outcome.content.contains("missing_bodies"))
+        #expect(!outcome.content.contains("downloaded_bodies"))
     }
 
     @Test("a reply draft with no recipients resolves the sender and a Re: subject")
@@ -262,7 +312,8 @@ struct MailToolsTests {
         let tools = MailTools(service: service)
         let outcome = try await tools.execute(
             action: "mark_read", arguments: ["thread_id": "9001"], defaultLimit: 20)
-        #expect(await service.threadCalls.first?.id == "9001")
+        #expect(await service.indexedThreadCalls.first?.id == "9001")
+        #expect(await service.threadCalls.isEmpty)
         #expect(await service.markedRead == [["101", "102"]])
         #expect(outcome.auditAction.contains("Re: Q3 planning"))
     }

@@ -14,8 +14,11 @@ private enum RecipientsShape {
 }
 
 /// Builds a fixture Envelope Index and .emlx tree so MailDatabase's SQL and
-/// body loading run for real without any TCC grant.
-private func makeMailFixture(recipients: RecipientsShape = .legacy) throws -> (
+/// body loading run for real without any TCC grant. messageIDHeaders false
+/// mimics macOS 15, whose message_global_data has no message_id_header.
+private func makeMailFixture(
+    recipients: RecipientsShape = .legacy, messageIDHeaders: Bool = true
+) throws -> (
     index: String, root: URL
 ) {
     let root = FileManager.default.temporaryDirectory
@@ -52,12 +55,29 @@ private func makeMailFixture(recipients: RecipientsShape = .legacy) throws -> (
         recipientsSQL = ""
     }
 
+    // messages.message_id is a hash of the Message-ID header, and
+    // message_global_data joins on that same hash. 103 has a global row
+    // whose header Mail never filled, like a good share of real rows.
+    let globalDataSQL =
+        messageIDHeaders
+        ? """
+        CREATE TABLE message_global_data (ROWID INTEGER PRIMARY KEY, message_id INTEGER, download_state INTEGER, message_id_header TEXT);
+        INSERT INTO message_global_data VALUES (1, -9222759812030868440, 0, '<alex-101@studio.com>');
+        INSERT INTO message_global_data VALUES (2, 4611686018427387904, 0, 'me-102+draft=1@me.com');
+        INSERT INTO message_global_data VALUES (3, 77, 0, NULL);
+        """
+        : """
+        CREATE TABLE message_global_data (ROWID INTEGER PRIMARY KEY, message_id INTEGER, download_state INTEGER);
+        INSERT INTO message_global_data VALUES (1, -9222759812030868440, 0);
+        """
+
     let statements = """
         CREATE TABLE subjects (ROWID INTEGER PRIMARY KEY, subject TEXT);
         CREATE TABLE addresses (ROWID INTEGER PRIMARY KEY, address TEXT, comment TEXT);
         CREATE TABLE mailboxes (ROWID INTEGER PRIMARY KEY, url TEXT);
-        CREATE TABLE messages (ROWID INTEGER PRIMARY KEY, subject INTEGER, sender INTEGER, date_received INTEGER, mailbox INTEGER, conversation_id INTEGER, read INTEGER);
+        CREATE TABLE messages (ROWID INTEGER PRIMARY KEY, subject INTEGER, sender INTEGER, date_received INTEGER, mailbox INTEGER, conversation_id INTEGER, read INTEGER, message_id INTEGER);
         \(recipientsSQL)
+        \(globalDataSQL)
 
         INSERT INTO subjects VALUES (1, 'Re: Q3 planning');
         INSERT INTO subjects VALUES (2, 'Lunch');
@@ -67,9 +87,9 @@ private func makeMailFixture(recipients: RecipientsShape = .legacy) throws -> (
         INSERT INTO mailboxes VALUES (1, 'imap://chris@mail.example/INBOX');
         INSERT INTO mailboxes VALUES (2, 'imap://chris@mail.example/Sent%20Messages');
 
-        INSERT INTO messages VALUES (101, 1, 1, 1750000000, 1, 9001, 1);
-        INSERT INTO messages VALUES (102, 1, 2, 1750000600, 2, 9001, 1);
-        INSERT INTO messages VALUES (103, 2, 3, 1750001200, 1, 9002, 0);
+        INSERT INTO messages VALUES (101, 1, 1, 1750000000, 1, 9001, 1, -9222759812030868440);
+        INSERT INTO messages VALUES (102, 1, 2, 1750000600, 2, 9001, 1, 4611686018427387904);
+        INSERT INTO messages VALUES (103, 2, 3, 1750001200, 1, 9002, 0, 77);
         """
     guard sqlite3_exec(db, statements, nil, nil, nil) == SQLITE_OK else {
         throw ToolFailure("fixture SQL failed: \(String(cString: sqlite3_errmsg(db)))")
@@ -284,6 +304,61 @@ struct MailDatabaseTests {
         } catch {
             Issue.record("unexpected error type: \(error)")
         }
+    }
+
+    @Test("rows carry a message link built from the Message-ID header")
+    func links() async throws {
+        let fixture = try makeMailFixture()
+        let database = MailDatabase(indexPath: fixture.index, mailRoot: fixture.root)
+        let latest = try await database.search(
+            query: nil, mailbox: nil, from: nil, to: nil, since: nil, until: nil,
+            unreadOnly: false, limit: 10)
+        #expect(
+            latest.map(\.link) == [
+                nil,
+                "message://%3Cme-102%2Bdraft%3D1@me.com%3E",
+                "message://%3Calex-101@studio.com%3E",
+            ])
+
+        let thread = try await database.thread(id: "9001", limit: 10)
+        #expect(
+            thread.messages.map(\.link) == [
+                "message://%3Calex-101@studio.com%3E",
+                "message://%3Cme-102%2Bdraft%3D1@me.com%3E",
+            ])
+
+        let summary = try await database.messageSummary(id: "101")
+        #expect(summary?.link == "message://%3Calex-101@studio.com%3E")
+    }
+
+    @Test("an index without the header column still answers, with no links")
+    func noHeaderColumn() async throws {
+        let fixture = try makeMailFixture(messageIDHeaders: false)
+        let database = MailDatabase(indexPath: fixture.index, mailRoot: fixture.root)
+        let latest = try await database.search(
+            query: nil, mailbox: nil, from: nil, to: nil, since: nil, until: nil,
+            unreadOnly: false, limit: 10)
+        #expect(latest.map(\.id) == ["103", "102", "101"])
+        #expect(latest.allSatisfy { $0.link == nil })
+
+        let thread = try await database.thread(id: "9001", limit: 10)
+        #expect(thread.messages.first?.body == "Planning looks good. See you Thursday!")
+        #expect(thread.messages.allSatisfy { $0.link == nil })
+    }
+
+    @Test("a message with no .emlx is recorded with its mailbox url")
+    func missingBodies() async throws {
+        let fixture = try makeMailFixture()
+        let database = MailDatabase(indexPath: fixture.index, mailRoot: fixture.root)
+        let thread = try await database.thread(id: "9001", limit: 10)
+        #expect(
+            thread.missingBodies == [
+                MissingBody(
+                    messageID: "102", mailboxURL: "imap://chris@mail.example/Sent%20Messages")
+            ])
+
+        let lunch = try await database.thread(id: "9002", limit: 10)
+        #expect(lunch.missingBodies.isEmpty)
     }
 
     @Test("a missing index fails with the Full Disk Access sentence")

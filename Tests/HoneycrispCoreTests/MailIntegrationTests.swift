@@ -48,4 +48,45 @@ struct MailIntegrationTests {
         _ = try await writer.setState(messageIDs: [message.id], read: nil, flagged: original)
         #expect(try await writer.flaggedStatus(messageID: message.id) == original)
     }
+
+    @Test("recent rows carry well formed links when the index keeps the header")
+    func links() async throws {
+        let database = MailDatabase()
+        let hits = try await database.search(
+            query: nil, mailbox: nil, from: nil, to: nil,
+            since: nil, until: nil, unreadOnly: false, limit: 50)
+        for link in hits.compactMap(\.link) {
+            #expect(link.hasPrefix("message://%3C"))
+            #expect(link.hasSuffix("%3E"))
+        }
+    }
+
+    /// The GH-12 assumption: asking Mail for the source of a message it
+    /// never downloaded makes Mail fetch it. Looks through older archived
+    /// threads for a body that is not on disk; when every one already is,
+    /// there is nothing to prove on this Mac and the test returns.
+    @Test("Mail hands over a body that is not on disk, and the read state holds")
+    func fetchMissingBody() async throws {
+        let database = MailDatabase()
+        let candidates = try await database.search(
+            query: nil, mailbox: "Archive", from: nil, to: nil, since: nil,
+            until: Date().addingTimeInterval(-365 * 86_400), unreadOnly: false, limit: 10)
+        var target: (missing: MissingBody, read: Bool)?
+        for summary in candidates {
+            let thread = try await database.thread(id: summary.threadId, limit: 20)
+            if let missing = thread.missingBodies.first,
+                let before = try await database.messageSummary(id: missing.messageID)
+            {
+                target = (missing, before.read)
+                break
+            }
+        }
+        guard let target else { return }
+
+        let sources = try await AppleEventMailBodyFetcher().sources(for: [target.missing])
+        let source = try #require(sources[target.missing.messageID])
+        #expect(MimeText.bodyText(fromRFC822: source)?.isEmpty == false)
+        let after = try await database.messageSummary(id: target.missing.messageID)
+        #expect(after?.read == target.read)
+    }
 }
