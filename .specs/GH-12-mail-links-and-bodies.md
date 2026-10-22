@@ -1,4 +1,4 @@
-# HC-043: Mail links and missing bodies
+# GH-12: Mail links and missing bodies
 
 ## Why
 
