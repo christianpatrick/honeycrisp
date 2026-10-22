@@ -25,6 +25,9 @@ public actor MailDatabase: EnvelopeIndexReading {
     private var connection: Connection?
     /// nil means not probed yet; .some(nil) means unusable, degrade.
     private var recipientsSchema: RecipientsSchema??
+    /// nil means not probed yet. false means this index keeps no Message-ID
+    /// header (macOS 15 and earlier), so rows carry no link.
+    private var hasMessageIDHeader: Bool?
 
     public init(
         indexPath: String = MailDatabase.discoverIndexPath(),
@@ -52,13 +55,14 @@ public actor MailDatabase: EnvelopeIndexReading {
         since: Date?, until: Date?, unreadOnly: Bool, limit: Int
     ) async throws -> [MailMessageSummary] {
         let db = try open()
+        let header = messageIDHeaderSQL(db)
         var sql = """
             SELECT m.ROWID, m.conversation_id, s.subject, a.address, a.comment,
-                   m.date_received, m."read", mb.url
+                   m.date_received, m."read", mb.url, \(header.column)
             FROM messages m
             LEFT JOIN subjects s ON s.ROWID = m.subject
             LEFT JOIN addresses a ON a.ROWID = m.sender
-            LEFT JOIN mailboxes mb ON mb.ROWID = m.mailbox
+            LEFT JOIN mailboxes mb ON mb.ROWID = m.mailbox\(header.join)
             WHERE 1 = 1
             """
         if needle != nil {
@@ -148,13 +152,14 @@ public actor MailDatabase: EnvelopeIndexReading {
     public func messageSummary(id: String) async throws -> MailMessageSummary? {
         guard let rowID = Int64(id) else { return nil }
         let db = try open()
+        let header = messageIDHeaderSQL(db)
         let sql = """
             SELECT m.ROWID, m.conversation_id, s.subject, a.address, a.comment,
-                   m.date_received, m."read", mb.url
+                   m.date_received, m."read", mb.url, \(header.column)
             FROM messages m
             LEFT JOIN subjects s ON s.ROWID = m.subject
             LEFT JOIN addresses a ON a.ROWID = m.sender
-            LEFT JOIN mailboxes mb ON mb.ROWID = m.mailbox
+            LEFT JOIN mailboxes mb ON mb.ROWID = m.mailbox\(header.join)
             WHERE m.ROWID = ?1
             """
         var found: MailMessageSummary?
@@ -173,7 +178,8 @@ public actor MailDatabase: EnvelopeIndexReading {
             fromName: column(statement, 4),
             date: Date(timeIntervalSince1970: Double(sqlite3_column_int64(statement, 5))),
             mailbox: mailboxName(fromURL: column(statement, 7)),
-            read: sqlite3_column_int(statement, 6) == 1
+            read: sqlite3_column_int(statement, 6) == 1,
+            link: MailLink.url(forMessageIDHeader: column(statement, 8))
         )
     }
 
@@ -189,11 +195,14 @@ public actor MailDatabase: EnvelopeIndexReading {
             throw ToolFailure("mail_read needs the numeric thread_id from mail_search.")
         }
         let db = try open()
+        let header = messageIDHeaderSQL(db)
         let sql = """
-            SELECT m.ROWID, s.subject, a.address, a.comment, m.date_received
+            SELECT m.ROWID, s.subject, a.address, a.comment, m.date_received,
+                   mb.url, \(header.column)
             FROM messages m
             LEFT JOIN subjects s ON s.ROWID = m.subject
             LEFT JOIN addresses a ON a.ROWID = m.sender
+            LEFT JOIN mailboxes mb ON mb.ROWID = m.mailbox\(header.join)
             WHERE m.conversation_id = ?1
             ORDER BY m.date_received ASC
             LIMIT ?2
@@ -204,6 +213,8 @@ public actor MailDatabase: EnvelopeIndexReading {
             let from: String
             let fromName: String?
             let date: Date
+            let mailboxURL: String?
+            let link: String?
         }
         var rows: [Row] = []
         try query(db, sql, bind: { statement in
@@ -216,7 +227,9 @@ public actor MailDatabase: EnvelopeIndexReading {
                     subject: column(statement, 1) ?? "",
                     from: column(statement, 2) ?? "",
                     fromName: column(statement, 3),
-                    date: Date(timeIntervalSince1970: Double(sqlite3_column_int64(statement, 4)))
+                    date: Date(timeIntervalSince1970: Double(sqlite3_column_int64(statement, 4))),
+                    mailboxURL: column(statement, 5),
+                    link: MailLink.url(forMessageIDHeader: column(statement, 6))
                 ))
         }
         guard !rows.isEmpty else {
@@ -226,11 +239,16 @@ public actor MailDatabase: EnvelopeIndexReading {
         let bodies = Self.loadBodies(rowIDs: rows.map(\.id), under: mailRoot)
         var participants: [String] = []
         var messages: [MailMessage] = []
+        var missingBodies: [MissingBody] = []
         for row in rows {
             let to = try recipients(db, messageRowID: row.id, type: 0)
             let cc = try recipients(db, messageRowID: row.id, type: 1)
             for address in [row.from] + to + cc where !address.isEmpty {
                 if !participants.contains(address) { participants.append(address) }
+            }
+            if bodies[row.id] == nil, let mailboxURL = row.mailboxURL {
+                missingBodies.append(
+                    MissingBody(messageID: String(row.id), mailboxURL: mailboxURL))
             }
             messages.append(
                 MailMessage(
@@ -239,14 +257,16 @@ public actor MailDatabase: EnvelopeIndexReading {
                     fromName: row.fromName,
                     to: to,
                     date: row.date,
-                    body: bodies[row.id] ?? "(body unavailable)"
+                    body: bodies[row.id] ?? "(body unavailable)",
+                    link: row.link
                 ))
         }
         return MailThread(
             id: id,
             subject: rows.first?.subject ?? "",
             participants: participants,
-            messages: messages
+            messages: messages,
+            missingBodies: missingBodies
         )
     }
 
@@ -299,6 +319,36 @@ public actor MailDatabase: EnvelopeIndexReading {
         }
         recipientsSchema = .some(schema)
         return schema
+    }
+
+    /// The select column and join for the Message-ID header (GH-12). On
+    /// macOS 26 the header sits in message_global_data, joined on the
+    /// messages.message_id hash; older indexes lack the column, so the
+    /// slot selects NULL and the join goes away.
+    private func messageIDHeaderSQL(_ db: OpaquePointer) -> (column: String, join: String) {
+        guard probeMessageIDHeader(db) else { return ("NULL", "") }
+        return (
+            "g.message_id_header",
+            "\n            LEFT JOIN message_global_data g ON g.message_id = m.message_id"
+        )
+    }
+
+    private func probeMessageIDHeader(_ db: OpaquePointer) -> Bool {
+        if let probed = hasMessageIDHeader { return probed }
+        let usable =
+            tableColumns(db, "messages").contains("message_id")
+            && tableColumns(db, "message_global_data")
+                .isSuperset(of: ["message_id", "message_id_header"])
+        hasMessageIDHeader = usable
+        return usable
+    }
+
+    private func tableColumns(_ db: OpaquePointer, _ table: String) -> Set<String> {
+        var columns: Set<String> = []
+        try? query(db, "PRAGMA table_info(\(table))", bind: { _ in }) { statement in
+            if let name = column(statement, 1) { columns.insert(name.lowercased()) }
+        }
+        return columns
     }
 
     /// One bounded walk for all the bodies a thread needs. The on-disk

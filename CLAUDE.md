@@ -4,4 +4,4 @@ Read AGENTS.md first. It holds the working agreements, architecture decisions, p
 
 One more pointer:
 
-- .specs holds one spec per task (HC-NNN). Write the spec before the code, and write the failing test before the implementation.
+- .specs holds one spec per task (HC-NNN, or GH-N when the task starts from GitHub issue #N). Write the spec before the code, and write the failing test before the implementation.

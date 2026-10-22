@@ -108,7 +108,7 @@ public enum ToolRegistry {
     private static let definitions: [String: Definition] = [
         "mail_search": Definition(
             description:
-                "Find mail. Filters compose: keyword, sender, recipient, mailbox, a time window, and unread only all work alone or together, and no filters at all returns the latest mail. Returns summaries with ids for mail_read.",
+                "Find mail. Filters compose: keyword, sender, recipient, mailbox, a time window, and unread only all work alone or together, and no filters at all returns the latest mail. Returns summaries with ids for mail_read. Each summary carries a link when Mail knows the Message-ID: a message:// URL that opens the email in Mail on this Mac and on an iPhone or iPad with the same account. Share it whenever someone wants to open the email on their phone.",
             schema: schema(
                 properties: [
                     "query": prop("string", "Words to look for in subjects and senders."),
@@ -134,7 +134,8 @@ public enum ToolRegistry {
             schema: schema(properties: [:])
         ),
         "mail_read": Definition(
-            description: "Read one Mail thread in full, oldest message first.",
+            description:
+                "Read one Mail thread in full, oldest message first. Each message carries a link when Mail knows the Message-ID, the same message:// URL mail_search returns. When a body is not on this Mac yet, like old archived mail, Mail downloads it first.",
             schema: schema(
                 properties: [
                     "thread_id": prop("string", "The thread id returned by mail_search."),
