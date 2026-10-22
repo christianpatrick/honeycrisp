@@ -43,7 +43,8 @@ public struct MailTools: Sendable {
             return ([messageID], "the message")
         }
         if let threadID = string(arguments["thread_id"]), !threadID.isEmpty {
-            let thread = try await service.thread(id: threadID, limit: max(defaultLimit, 100))
+            let thread = try await service.indexedThread(
+                id: threadID, limit: max(defaultLimit, 100))
             return (thread.messages.map(\.id), "the thread \u{201C}\(thread.subject)\u{201D}")
         }
         throw ToolFailure(
@@ -110,7 +111,8 @@ public struct MailTools: Sendable {
             ids = [messageID]
             what = "the message"
         } else if let threadID, !threadID.isEmpty {
-            let thread = try await service.thread(id: threadID, limit: max(defaultLimit, 100))
+            let thread = try await service.indexedThread(
+                id: threadID, limit: max(defaultLimit, 100))
             ids = thread.messages.map(\.id)
             what = "the thread \u{201C}\(thread.subject)\u{201D}"
         } else {
@@ -188,17 +190,26 @@ public struct MailTools: Sendable {
         let thread = try await service.thread(id: threadID, limit: limit)
         let with = thread.participants.prefix(3).joined(separator: ", ")
         let more = thread.participants.count > 3 ? ", +\(thread.participants.count - 3)" : ""
+        var rows = [
+            AuditDetailRow(label: "Thread", value: thread.subject),
+            AuditDetailRow(label: "With", value: with + more),
+            AuditDetailRow(
+                label: "Returned", value: "Subject, \(thread.messages.count) message bodies"),
+        ]
+        // Mail downloading a body it lacked is the one side effect a read
+        // can have (GH-12), so the activity list names it.
+        let downloaded = thread.downloadedBodies
+        let bodies = downloaded == 1 ? "body" : "bodies"
+        var summary = "Returned the subject and \(thread.messages.count) message bodies."
+        if downloaded > 0 {
+            summary += " Mail downloaded \(downloaded) \(bodies) it did not have yet."
+            rows.append(AuditDetailRow(label: "Downloaded", value: "\(downloaded) \(bodies)"))
+        }
         return ToolOutcome(
             content: try ToolJSON.encode(thread),
             auditAction: "Read the thread \u{201C}\(thread.subject)\u{201D}",
-            auditSummary:
-                "Returned the subject and \(thread.messages.count) message bodies. Nothing was modified.",
-            auditRows: [
-                AuditDetailRow(label: "Thread", value: thread.subject),
-                AuditDetailRow(label: "With", value: with + more),
-                AuditDetailRow(
-                    label: "Returned", value: "Subject, \(thread.messages.count) message bodies"),
-            ]
+            auditSummary: summary + " Nothing was modified.",
+            auditRows: rows
         )
     }
 
