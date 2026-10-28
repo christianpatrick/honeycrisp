@@ -35,6 +35,8 @@ struct CBORTests {
         #expect(try decode("26") == .negative(-7))
         #expect(try decode("3863") == .negative(-100))
         #expect(try decode("3903e7") == .negative(-1000))
+        #expect(try decode("3a000f423f") == .negative(-1_000_000))
+        #expect(try decode("3b000000e8d4a50fff") == .negative(-1_000_000_000_000))
     }
 
     @Test("a negative integer below Int64 throws")
