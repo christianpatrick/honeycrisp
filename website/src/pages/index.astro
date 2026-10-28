@@ -155,6 +155,12 @@ const apps = [
             <b>It works with any assistant.</b> Any MCP client can use it, so you are
             not locked into a single app or vendor.
           </li>
+          <li>
+            <b>It works away from your Mac, too.</b> Turn on remote access, and the
+            agent on your phone can reach your Mac through a tunnel you run. Each new
+            connection needs your passkey, and you can disconnect any of them in
+            Settings.
+          </li>
         </ul>
       </div>
 
@@ -172,7 +178,9 @@ const apps = [
         reaches out for is its own updates: it checks a version file so it can tell
         you when a new release is ready, it sends nothing about you, and you can
         switch it off in Settings. Everything else works with your Mac offline,
-        because the only machine involved is the one in front of you.
+        because the only machine involved is the one in front of you. The one
+        exception is remote access, which stays off until you turn it on: then your
+        agent reaches your Mac through a tunnel you run yourself.
       </p>
 
       <p>
@@ -228,7 +236,8 @@ const apps = [
         signed and notarized. Unzip it, drop Honeycrisp in your Applications folder,
         and point any MCP client at the bundled <code>honeycrisp</code> command.
         <a href={`${repo}#install`}>The README walks through the setup</a>, and macOS
-        asks before Honeycrisp touches anything.
+        asks before Honeycrisp touches anything. To use it from your phone too, turn
+        on remote access and add it to your agent as a remote MCP server.
       </p>
 
       <p>
@@ -268,6 +277,13 @@ const apps = [
             It follows the MCP standard, so you can use it with any model you
             choose. It keeps a local-only log of every action it takes and lets you
             fine-tune permissions with a single click.
+          </p>
+          <p>
+            Then I wanted the same thing from my phone. My mail, calendar, and
+            reminders all live on my Mac, but plenty of my day happens away from it.
+            Now I can ask my agent what's due today while I'm out, and the answer
+            comes from my Mac at home, through a tunnel I run. Nothing connects until
+            I sign in with my passkey.
           </p>
           <p>
             Just remember that while Honeycrisp doesn't upload your data anywhere,

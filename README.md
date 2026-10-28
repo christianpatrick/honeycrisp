@@ -8,6 +8,7 @@ Honeycrisp is a small menu bar app with a bundled `honeycrisp` command line brid
 - **It is fast and native.** It speaks to the system frameworks the apps already use, so requests come back right away with real, structured data instead of scraped text.
 - **It is completely private.** Everything stays on your Mac. Nothing is uploaded, ever, and the only record kept is a local activity list you can clear. Honeycrisp only sees the one thing you ask for, the moment you ask for it.
 - **It works with any assistant.** Any MCP client can use it, so you are not locked into a single app or vendor.
+- **It works away from your Mac, too.** Turn on remote access, and the agent on your phone can reach your Mac through a tunnel you run. Each new connection needs your passkey, and you can disconnect any of them in Settings.
 
 ## What it can reach today
 
@@ -59,6 +60,24 @@ claude mcp add --transport http honeycrisp http://127.0.0.1:41117/mcp
 
 Either way, every request flows through the one app you granted access to, shows up in its activity list, and obeys the permissions you set in the panel.
 
+### Remote clients
+
+Agents that run in the cloud, including the apps on your phone, connect from their own servers, so they can't see a port on your Mac. Remote access lets them in through a tunnel you run yourself. It stays off until you turn it on, and Honeycrisp never puts a server of its own in the middle.
+
+Here is how I set it up with [Tailscale Funnel](https://tailscale.com/kb/1223/funnel):
+
+1. Point Funnel at Honeycrisp's remote port. If you installed Tailscale as an app, the command lives at `/Applications/Tailscale.app/Contents/MacOS/Tailscale`.
+
+   ```sh
+   tailscale funnel --bg 41118
+   ```
+
+2. In Honeycrisp's Settings, turn on remote access and paste the https address Funnel prints as the public URL.
+3. Choose Add a passkey and save it somewhere that syncs, like iCloud Keychain, so your iPhone can use it too.
+4. In your agent, add a remote MCP server with the connector URL Settings shows, which is your public URL followed by `/mcp`.
+
+When your agent connects, your browser opens a Honeycrisp sign-in page at your public URL, and you allow the connection with your passkey. It then shows up in Settings, where you can disconnect it at any time. Remote clients get the same permissions as every other client, and sends still wait for your approval on the Mac.
+
 ## Configuration
 
 By default Honeycrisp exposes all six apps in read-only mode. You can narrow that down with flags on the `serve` command or in the menu bar app directly.
@@ -77,7 +96,7 @@ Most tools like this drive your apps with AppleScript, spinning up a process and
 
 > **Everything stays on your Mac.** Nothing is uploaded, ever. The only record Honeycrisp keeps is the activity list you can open from the menu bar, it lives on your Mac, and you can clear it whenever you like.
 
-There is no account, no cloud, and no telemetry. The only thing Honeycrisp reaches out for is its own updates: it checks a version file so it can tell you when a new release is ready, it sends nothing about you, and you can switch it off in Settings. Everything else works with your Mac offline, because the only machine involved is the one in front of you.
+There is no account, no cloud, and no telemetry. The only thing Honeycrisp reaches out for is its own updates: it checks a version file so it can tell you when a new release is ready, it sends nothing about you, and you can switch it off in Settings. Everything else works with your Mac offline, because the only machine involved is the one in front of you. The one exception is remote access, which stays off until you turn it on: then your agent reaches your Mac through a tunnel you run yourself.
 
 ## Why I built this
 
@@ -86,6 +105,8 @@ I love using Apple apps personally and have built great workflows over the years
 After trying several MCP options for Apple, I ran into performance issues: reading and updating data inside apps was slow, and would often lock up an app entirely. Even worse, I had no clear view of what those MCPs could actually see or do on my behalf.
  
 So Honeycrisp is here to be your fast, private, and transparent helper. It follows the MCP standard, so you can use it with any model you choose. It keeps a local-only log of every action it takes and lets you fine-tune permissions with a single click.
+ 
+Then I wanted the same thing from my phone. My mail, calendar, and reminders all live on my Mac, but plenty of my day happens away from it. Now I can ask my agent what's due today while I'm out, and the answer comes from my Mac at home, through a tunnel I run. Nothing connects until I sign in with my passkey.
  
 Just remember that while Honeycrisp doesn't upload your data anywhere, it's only as private as the model provider you choose. For a fully private setup, pair it with a local model running in something like Ollama or LM Studio, so nothing ever leaves your Mac.
  

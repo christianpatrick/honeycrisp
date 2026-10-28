@@ -190,21 +190,69 @@ public struct MCPHTTPRouter: Sendable {
 }
 
 /// The loopback socket layer: NWListener on 127.0.0.1, minimal HTTP/1.1,
-/// POST /mcp to the router, GET /health, optional bearer enforcement,
-/// Connection: close per request.
+/// Connection: close per request. The local port answers POST /mcp and
+/// GET /health with optional bearer enforcement; the remote port (GH-16)
+/// hands every request to its own handler.
 public final class LoopbackHTTPServer: @unchecked Sendable {
+    public typealias Handler = @Sendable (HTTPRequest) async -> HTTPResponse
+
+    /// How long a client gets to deliver its whole request. Handling time
+    /// doesn't count, because a send can wait minutes on an approval.
+    public static let defaultReadTimeout: TimeInterval = 30
+    /// 16 MB is far beyond any sane MCP request and bounds memory.
+    static let maxBody = 16_777_216
+
     private let listener: NWListener
-    private let queue = DispatchQueue(label: "app.honeycrisp.http")
+    private let stopFlag: StopFlag
     public let port: UInt16
 
-    private init(listener: NWListener, port: UInt16) {
+    private init(listener: NWListener, stopFlag: StopFlag, port: UInt16) {
         self.listener = listener
+        self.stopFlag = stopFlag
         self.port = port
     }
 
+    /// The local port: MCP and health for clients on this Mac, refusing
+    /// anything that came through a tunnel or a rebound DNS name.
     public static func start(port: UInt16, bearerToken: String?, router: MCPHTTPRouter)
         async throws -> LoopbackHTTPServer
     {
+        try await start(port: port) { request in
+            guard LocalRequestGuard.allows(headers: request.headers) else {
+                return .json(
+                    403,
+                    [
+                        "error":
+                            "This port only answers apps on this Mac. Point a tunnel at the remote access port instead."
+                    ])
+            }
+            switch (request.method, request.path) {
+            case ("GET", "/health"):
+                return HTTPResponse(
+                    status: 200,
+                    body: Data(
+                        #"{"status":"ok","name":"Honeycrisp","version":"\#(HoneycrispInfo.version)"}"#
+                            .utf8))
+            case ("POST", "/mcp"):
+                if let bearerToken, request.headers["authorization"] != "Bearer \(bearerToken)" {
+                    return HTTPResponse(
+                        status: 401, body: Data(#"{"error":"A bearer token is required."}"#.utf8))
+                }
+                let routed = await router.handle(
+                    body: request.body, clientHeader: request.headers["x-honeycrisp-client"])
+                return HTTPResponse(status: routed.status, body: routed.body)
+            default:
+                return HTTPResponse(
+                    status: 404, body: Data(#"{"error":"There is nothing here."}"#.utf8))
+            }
+        }
+    }
+
+    /// A loopback listener that hands every parsed request to the handler.
+    public static func start(
+        port: UInt16, readTimeout: TimeInterval = defaultReadTimeout,
+        handler: @escaping Handler
+    ) async throws -> LoopbackHTTPServer {
         let parameters = NWParameters.tcp
         guard
             let endpointPort = NWEndpoint.Port(rawValue: port)
@@ -215,11 +263,20 @@ public final class LoopbackHTTPServer: @unchecked Sendable {
             host: .ipv4(.loopback), port: endpointPort)
         let listener = try NWListener(using: parameters)
         let queue = DispatchQueue(label: "app.honeycrisp.http.accept")
+        let stopFlag = StopFlag()
 
         listener.newConnectionHandler = { connection in
+            // Cancelling a listener finishes asynchronously, so a connection
+            // can still arrive after stop(). It gets closed unanswered.
+            guard !stopFlag.isStopped else {
+                connection.cancel()
+                return
+            }
             connection.start(queue: queue)
             Task {
-                await Self.serve(connection: connection, router: router, bearerToken: bearerToken)
+                await Self.serve(
+                    connection: connection, readTimeout: readTimeout, stopFlag: stopFlag,
+                    handler: handler)
             }
         }
 
@@ -245,47 +302,43 @@ public final class LoopbackHTTPServer: @unchecked Sendable {
             }
             listener.start(queue: queue)
         }
-        return LoopbackHTTPServer(listener: listener, port: readyPort)
+        return LoopbackHTTPServer(listener: listener, stopFlag: stopFlag, port: readyPort)
     }
 
+    /// Stops answering at once: the listener closes, and any request that
+    /// finishes arriving after this goes unanswered.
     public func stop() {
+        stopFlag.stop()
         listener.cancel()
     }
 
     // MARK: - One connection
 
     private static func serve(
-        connection: NWConnection, router: MCPHTTPRouter, bearerToken: String?
+        connection: NWConnection, readTimeout: TimeInterval, stopFlag: StopFlag,
+        handler: Handler
     ) async {
-        guard let request = await readRequest(connection: connection) else {
+        let deadline = ReadDeadline()
+        DispatchQueue.global().asyncAfter(deadline: .now() + readTimeout) {
+            if deadline.expire() { connection.cancel() }
+        }
+        guard let request = await readRequest(connection: connection), deadline.finish(),
+            !stopFlag.isStopped
+        else {
             connection.cancel()
             return
         }
-        let response: (status: Int, reason: String, body: Data)
-        switch (request.method, request.path) {
-        case ("GET", "/health"):
-            let body = Data(
-                #"{"status":"ok","name":"Honeycrisp","version":"\#(HoneycrispInfo.version)"}"#
-                    .utf8)
-            response = (200, "OK", body)
-        case ("POST", "/mcp"):
-            if let bearerToken, request.headers["authorization"] != "Bearer \(bearerToken)" {
-                response = (
-                    401, "Unauthorized", Data(#"{"error":"A bearer token is required."}"#.utf8)
-                )
-            } else {
-                let routed = await router.handle(
-                    body: request.body, clientHeader: request.headers["x-honeycrisp-client"])
-                response = (
-                    routed.status, routed.status == 202 ? "Accepted" : "OK", routed.body
-                )
-            }
-        default:
-            response = (404, "Not Found", Data(#"{"error":"There is nothing here."}"#.utf8))
-        }
+        let response = await handler(request)
 
-        var head = "HTTP/1.1 \(response.status) \(response.reason)\r\n"
-        head += "Content-Type: application/json\r\n"
+        var head = "HTTP/1.1 \(response.status) \(HTTPResponse.reason(for: response.status))\r\n"
+        head += "Content-Type: \(response.headers["Content-Type"] ?? "application/json")\r\n"
+        for (name, value) in response.headers.sorted(by: { $0.key < $1.key })
+        where !["content-type", "content-length", "connection"].contains(name.lowercased()) {
+            // Header values never carry line breaks, whatever a handler built.
+            let safe = value.replacingOccurrences(of: "\r", with: "")
+                .replacingOccurrences(of: "\n", with: "")
+            head += "\(name): \(safe)\r\n"
+        }
         head += "Content-Length: \(response.body.count)\r\n"
         head += "Connection: close\r\n\r\n"
         var data = Data(head.utf8)
@@ -295,13 +348,6 @@ public final class LoopbackHTTPServer: @unchecked Sendable {
             completion: .contentProcessed { _ in
                 connection.cancel()
             })
-    }
-
-    private struct HTTPRequest {
-        let method: String
-        let path: String
-        let headers: [String: String]
-        let body: Data
     }
 
     private static func readRequest(connection: NWConnection) async -> HTTPRequest? {
@@ -331,17 +377,42 @@ public final class LoopbackHTTPServer: @unchecked Sendable {
         }
 
         var body = Data(buffer[headerRange.upperBound...])
-        // 16 MB is far beyond any sane MCP request and bounds memory.
-        let expected = min(max(Int(headers["content-length"] ?? "0") ?? 0, 0), 16_777_216)
-        while body.count < expected {
-            guard let chunk = await receive(connection: connection), !chunk.isEmpty else { break }
-            body.append(chunk)
+        if headers["transfer-encoding"]?.lowercased().contains("chunked") == true {
+            // A tunnel may forward a body without a length. The decoder only
+            // ever sees each received byte once.
+            var decoder = ChunkedDecoder()
+            var pending = body
+            while true {
+                let complete: Bool
+                do {
+                    complete = try decoder.feed(pending)
+                } catch {
+                    return nil
+                }
+                if complete {
+                    body = decoder.body
+                    break
+                }
+                guard decoder.body.count <= maxBody,
+                    let chunk = await receive(connection: connection), !chunk.isEmpty
+                else { return nil }
+                pending = chunk
+            }
+        } else {
+            let expected = min(max(Int(headers["content-length"] ?? "0") ?? 0, 0), maxBody)
+            while body.count < expected {
+                guard let chunk = await receive(connection: connection), !chunk.isEmpty else {
+                    break
+                }
+                body.append(chunk)
+            }
+            body = Data(body.prefix(expected))
         }
         return HTTPRequest(
             method: String(requestLine[0]),
-            path: String(requestLine[1]),
+            target: String(requestLine[1]),
             headers: headers,
-            body: Data(body.prefix(expected))
+            body: body
         )
     }
 
@@ -366,6 +437,46 @@ private final class ResumeOnce: @unchecked Sendable {
         guard !done else { return }
         done = true
         work()
+    }
+}
+
+/// Set once a server stops, for connections the closing listener still
+/// handed over.
+private final class StopFlag: @unchecked Sendable {
+    private let lock = NSLock()
+    private var stopped = false
+
+    var isStopped: Bool {
+        lock.withLock { stopped }
+    }
+
+    func stop() {
+        lock.withLock { stopped = true }
+    }
+}
+
+/// Races reading a request against its timeout: whichever settles first
+/// wins, and the other learns it lost.
+private final class ReadDeadline: @unchecked Sendable {
+    private let lock = NSLock()
+    private var settled = false
+
+    /// The timer fired. True means the read was still going.
+    func expire() -> Bool {
+        settle()
+    }
+
+    /// The read finished. True means the timer had not fired yet.
+    func finish() -> Bool {
+        settle()
+    }
+
+    private func settle() -> Bool {
+        lock.lock()
+        defer { lock.unlock() }
+        guard !settled else { return false }
+        settled = true
+        return true
     }
 }
 

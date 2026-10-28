@@ -204,4 +204,71 @@ struct AppModelTests {
         #expect(model.statusLine == "1 client connected")
         model.pause()
     }
+
+    @Test("remote access runs a second listener that asks for OAuth and stops on its own")
+    func remoteAccess() async throws {
+        let model = AppModel(
+            configURL: tempStoreURL("config.json"),
+            auditURL: tempStoreURL("audit.jsonl"),
+            executor: CapturingExecutor(),
+            presenter: RecordingPresenter(),
+            portOverride: 0,
+            remotePortOverride: 0
+        )
+        await model.start()
+        #expect(model.remoteState == .off)
+        #expect(await model.updatePublicURL("http://mac.example.ts.net") == false)
+        #expect(await model.updatePublicURL("https://mac.example.ts.net/mcp"))
+        #expect(model.config.publicURL == "https://mac.example.ts.net")
+        await model.updateRemoteAccess(true)
+        guard case .running(let remotePort) = model.remoteState else {
+            Issue.record("expected the remote listener, got \(model.remoteState)")
+            return
+        }
+        #expect(model.remoteConnectorURL == "https://mac.example.ts.net/mcp")
+
+        var request = URLRequest(url: URL(string: "http://127.0.0.1:\(remotePort)/mcp")!)
+        request.httpMethod = "POST"
+        request.httpBody = initializeBody(client: "Remote")
+        let (_, response) = try await URLSession.shared.data(for: request)
+        let http = response as? HTTPURLResponse
+        #expect(http?.statusCode == 401)
+        #expect(
+            http?.value(forHTTPHeaderField: "WWW-Authenticate")
+                == #"Bearer resource_metadata="https://mac.example.ts.net/.well-known/oauth-protected-resource""#
+        )
+        let link = await model.remoteSetupLink()
+        #expect(link?.absoluteString.hasPrefix("https://mac.example.ts.net/setup?code=") == true)
+
+        await model.updateRemoteAccess(false)
+        #expect(model.remoteState == .off)
+        await #expect(throws: (any Error).self) {
+            _ = try await URLSession.shared.data(for: request)
+        }
+        guard case .running(let localPort) = model.serverState else {
+            Issue.record("the local server stopped")
+            return
+        }
+        let health = URL(string: "http://127.0.0.1:\(localPort)/health")!
+        let (_, healthResponse) = try await URLSession.shared.data(from: health)
+        #expect((healthResponse as? HTTPURLResponse)?.statusCode == 200)
+        model.pause()
+    }
+
+    @Test("remote access with no public URL waits for one")
+    func remoteNeedsURL() async {
+        let model = AppModel(
+            configURL: tempStoreURL("config.json"),
+            auditURL: tempStoreURL("audit.jsonl"),
+            executor: CapturingExecutor(),
+            presenter: RecordingPresenter(),
+            portOverride: 0,
+            remotePortOverride: 0
+        )
+        await model.start()
+        await model.updateRemoteAccess(true)
+        #expect(model.remoteState == .needsPublicURL)
+        #expect(await model.remoteSetupLink() == nil)
+        model.pause()
+    }
 }

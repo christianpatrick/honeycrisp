@@ -24,7 +24,7 @@ struct WindowConfigurator: NSViewRepresentable {
 }
 
 /// Small, native settings: launch at login, the port, an optional bearer
-/// token, and the activity list's retention.
+/// token, remote access, and the activity list's retention.
 struct SettingsView: View {
     @Environment(AppModel.self) private var model
     @EnvironmentObject private var updater: UpdaterModel
@@ -33,6 +33,9 @@ struct SettingsView: View {
     @State private var tokenText = ""
     @State private var retention = 2000
     @State private var autoUpdates = true
+    @State private var remoteEnabled = false
+    @State private var publicURLText = ""
+    @State private var publicURLRejected = false
 
     var body: some View {
         Form {
@@ -69,6 +72,71 @@ struct SettingsView: View {
                 }
                 LabeledContent(
                     "Endpoint", value: "http://127.0.0.1:\(model.config.port)/mcp")
+            }
+
+            Section("Remote access") {
+                Toggle("Allow remote clients through your own tunnel", isOn: $remoteEnabled)
+                    .onChange(of: remoteEnabled) { _, enabled in
+                        Task { await model.updateRemoteAccess(enabled) }
+                    }
+                TextField(
+                    "Public URL", text: $publicURLText,
+                    prompt: Text("https://your-mac.your-tailnet.ts.net")
+                )
+                .onSubmit {
+                    Task {
+                        let saved = await model.updatePublicURL(publicURLText)
+                        publicURLRejected = !saved
+                        if saved { publicURLText = model.config.publicURL ?? "" }
+                    }
+                }
+                if publicURLRejected {
+                    Text("Use the https address your tunnel serves, with nothing after it but /mcp.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+                LabeledContent("Point your tunnel at", value: "http://127.0.0.1:\(model.config.remotePort)")
+                LabeledContent("Status", value: remoteStatus)
+                if let connector = model.remoteConnectorURL {
+                    LabeledContent("Connector URL") {
+                        Text(connector).textSelection(.enabled)
+                    }
+                }
+                if case .running = model.remoteState {
+                    HStack {
+                        Button("Add a passkey") {
+                            Task {
+                                if let link = await model.remoteSetupLink() {
+                                    NSWorkspace.shared.open(link)
+                                }
+                            }
+                        }
+                        Button("Copy setup link") {
+                            Task {
+                                if let link = await model.remoteSetupLink() {
+                                    NSPasteboard.general.clearContents()
+                                    NSPasteboard.general.setString(link.absoluteString, forType: .string)
+                                }
+                            }
+                        }
+                    }
+                }
+                LabeledContent("Passkeys", value: "\(model.remotePasskeys.count)")
+                if !model.remotePasskeys.isEmpty {
+                    Button("Remove passkeys", role: .destructive) {
+                        Task { await model.removePasskeys() }
+                    }
+                }
+                ForEach(model.remoteGrants) { grant in
+                    LabeledContent {
+                        Button("Disconnect") {
+                            Task { await model.disconnectRemote(grantID: grant.id) }
+                        }
+                    } label: {
+                        Text(grant.clientName)
+                        Text("Connected \(grant.createdAt.formatted(date: .abbreviated, time: .shortened))")
+                    }
+                }
             }
 
             Section("Activity") {
@@ -117,6 +185,22 @@ struct SettingsView: View {
             tokenText = model.config.bearerToken ?? ""
             retention = model.config.auditMaxEntries
             autoUpdates = model.config.automaticUpdateChecks
+            remoteEnabled = model.config.remoteAccessEnabled
+            publicURLText = model.config.publicURL ?? ""
+            Task { await model.refresh() }
+        }
+    }
+
+    private var remoteStatus: String {
+        switch model.remoteState {
+        case .off:
+            return model.config.remoteAccessEnabled ? "Starts with the server" : "Off"
+        case .needsPublicURL:
+            return "Waiting for a public URL"
+        case .running(let port):
+            return "Listening on port \(port)"
+        case .failed(let message):
+            return message
         }
     }
 }

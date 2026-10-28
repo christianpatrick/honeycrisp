@@ -24,7 +24,8 @@ Honeycrisp is early and ships from a single release line, so security fixes land
 A vulnerability is anything that lets data leave your Mac, or lets an action happen, in a way the design does not intend. Reports worth sending include:
 
 - Reading or sending data without the permissions or the per-request approval allowing it.
-- A way to reach the local server that bypasses its loopback binding or its optional bearer token.
+- A way to reach the local server that bypasses its loopback binding, its tunnel and rebinding guard, or its optional bearer token.
+- A way past remote access's OAuth or passkey sign-in: a token, code, or passkey check that accepts something it shouldn't, a redirect to a place the client never registered, or a page that runs script a client name smuggled in.
 - An update that installs without a valid EdDSA signature, or any tampering with the update path.
 - A write to a data store that another app owns, which Honeycrisp must never do.
 - Any path that exfiltrates the local activity log or personal data off the machine.
@@ -33,9 +34,10 @@ A vulnerability is anything that lets data leave your Mac, or lets an action hap
 
 These are intentional and are not security issues on their own:
 
-- The MCP server binds to loopback only (127.0.0.1). It is not meant to be exposed to a network, and running it behind a public address is outside the threat model. An optional bearer token gates access.
+- The local MCP server binds to loopback only (127.0.0.1) and is not meant to be exposed to a network. It refuses requests that carry a forwarding header or another host name, which catches HTTP tunnels and DNS rebinding. A tunnel that forwards raw TCP, such as `tailscale funnel --tcp`, `ngrok tcp`, or `ssh -R`, passes the caller's own headers and can't be caught, so never point a tunnel at the local port. An optional bearer token gates access.
+- Remote access is off by default. When you turn it on, a second loopback port serves OAuth and MCP to a tunnel you run, and every remote client has to be allowed with your passkey. Anyone who can reach your tunnel can see the sign-in page and register a client, and a remote client you allow gets the same access your permission settings give every client.
 - Outbound actions whose effect leaves your Mac (sending mail, sending a message) require an explicit approval every single time, even when their permission is on.
-- Honeycrisp keeps a local activity log and reads it locally; it has no account, server, or telemetry.
+- Honeycrisp keeps a local activity log and reads it locally; it has no account, server, or telemetry. Remote access uses a tunnel you run, never a server of Honeycrisp's.
 - The one outbound request is the Sparkle update check, which fetches a signed appcast over HTTPS, sends no personal data, and can be turned off in Settings.
 
 Thank you for helping keep Honeycrisp and the people who use it safe.
