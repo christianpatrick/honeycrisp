@@ -59,6 +59,24 @@ claude mcp add --transport http honeycrisp http://127.0.0.1:41117/mcp
 
 Either way, every request flows through the one app you granted access to, shows up in its activity list, and obeys the permissions you set in the panel.
 
+### Remote clients, like claude.ai
+
+Custom connectors in claude.ai and the Claude apps reach a server from Anthropic's cloud, so they can't see a port on your Mac. Remote access lets them in through a tunnel you run yourself. It stays off until you turn it on, and Honeycrisp never puts a server of its own in the middle.
+
+Here is how I set it up with [Tailscale Funnel](https://tailscale.com/kb/1223/funnel):
+
+1. Point Funnel at Honeycrisp's remote port. If you installed Tailscale as an app, the command lives at `/Applications/Tailscale.app/Contents/MacOS/Tailscale`.
+
+   ```sh
+   tailscale funnel --bg 41118
+   ```
+
+2. In Honeycrisp's Settings, turn on remote access and paste the https address Funnel prints as the public URL.
+3. Choose Add a passkey and save it somewhere that syncs, like iCloud Keychain, so your iPhone can use it too.
+4. In claude.ai, add a custom connector with the connector URL Settings shows, which is your public URL followed by `/mcp`.
+
+When Claude connects, your browser opens a Honeycrisp sign-in page at your public URL, and you allow the connection with your passkey. It then shows up in Settings, where you can disconnect it at any time. Remote clients get the same permissions as every other client, and sends still wait for your approval on the Mac.
+
 ## Configuration
 
 By default Honeycrisp exposes all six apps in read-only mode. You can narrow that down with flags on the `serve` command or in the menu bar app directly.

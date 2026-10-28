@@ -31,7 +31,7 @@ Read [AGENTS.md](AGENTS.md) first. The short version:
 - Meaningful tests only. Behavior through public API, system frameworks behind protocols with fakes.
 - [Conventional commits](https://www.conventionalcommits.org/en/v1.0.0/).
 - Everything is native Swift, including developer tooling.
-- Hard lines: no telemetry of any kind, loopback networking only, never write a data store another app owns, and never spawn osascript.
+- Hard lines: no telemetry of any kind, loopback networking only (remote access reaches the Mac only through a tunnel the user runs), never write a data store another app owns, and never spawn osascript.
 - Copy rules: full sentences, sentence case, no em-dashes, no emoji.
 
 ## Requesting an app
