@@ -333,41 +333,38 @@ struct RemoteAccessServerTests {
         #expect(pageData(wrongRedirect)["request"] == nil)
     }
 
-    @Test("a missing PKCE challenge, a wrong method, or a foreign resource redirect with invalid_request")
+    @Test("a malformed request shows an error page instead of redirecting to the client")
     func authorizeInvalidRequest() async throws {
         let harness = makeHarness()
         let authenticator = SoftwareAuthenticator()
         try await setUpPasskey(harness, authenticator)
-        let clientID = try await registerClient(harness)
+        // Registration is open, so a redirect URI proves nothing about who
+        // owns it, and an error must not bounce a browser there unasked.
+        let clientID = try await registerClient(harness, redirect: "https://evil.example/cb")
         let targets = [
             "/authorize?"
                 + queryString([
                     ("response_type", "code"), ("client_id", clientID),
-                    ("redirect_uri", claudeCallback), ("state", "xyz"),
+                    ("redirect_uri", "https://evil.example/cb"), ("state", "xyz"),
                 ]),
-            authorizeTarget(clientID: clientID).replacingOccurrences(
-                of: "code_challenge_method=S256", with: "code_challenge_method=plain"),
-            authorizeTarget(clientID: clientID).replacingOccurrences(
-                of: "response_type=code", with: "response_type=token"),
-            "/authorize?"
-                + queryString([
-                    ("response_type", "code"), ("client_id", clientID),
-                    ("redirect_uri", claudeCallback), ("code_challenge", pkceChallenge(verifier)),
-                    ("code_challenge_method", "S256"), ("state", "xyz"),
-                    ("resource", "https://other.example/mcp"),
-                ]),
+            authorizeTarget(clientID: clientID, redirect: "https://evil.example/cb")
+                .replacingOccurrences(
+                    of: "code_challenge_method=S256", with: "code_challenge_method=plain"),
+            authorizeTarget(clientID: clientID, redirect: "https://evil.example/cb")
+                .replacingOccurrences(of: "response_type=code", with: "response_type=token"),
+            authorizeTarget(
+                clientID: clientID, redirect: "https://evil.example/cb",
+                extra: []
+            ).replacingOccurrences(
+                of: "resource=https%3A%2F%2Fmac.example.ts.net%2Fmcp",
+                with: "resource=https%3A%2F%2Fother.example%2Fmcp"),
         ]
         for target in targets {
             let response = await harness.server.handle(getRequest(target))
-            #expect(response.status == 302, "\(target)")
-            let location = response.headers["Location"] ?? ""
-            #expect(location.hasPrefix(claudeCallback), "\(target)")
-            let parameters = redirectParameters(location)
-            #expect(
-                parameters["error"] == "invalid_request" || parameters["error"] == "unsupported_response_type"
-                    || parameters["error"] == "invalid_target", "\(target)")
-            #expect(parameters["state"] == "xyz")
-            #expect(parameters["iss"] == "https://mac.example.ts.net")
+            #expect(response.status == 400, "\(target)")
+            #expect(response.headers["Location"] == nil, "\(target)")
+            #expect(response.headers["Content-Type"]?.hasPrefix("text/html") == true, "\(target)")
+            #expect(pageData(response)["request"] == nil, "\(target)")
         }
     }
 

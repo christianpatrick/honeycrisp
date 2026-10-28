@@ -168,8 +168,11 @@ public actor RemoteAccessServer {
                 400, title: "This sign-in link is broken",
                 message: "A parameter appears twice. Start connecting again from your client.")
         }
-        // Until the client and its redirect check out, errors stay on this
-        // page: redirecting would let anyone bounce a browser off Honeycrisp.
+        // Every error stays on this page. Registration is open, so a
+        // registered redirect URI says nothing about who owns it, and
+        // redirecting an error there unasked would let anyone bounce a
+        // browser off this host (RFC 9700 section 4.11.2). Only the owner's
+        // own choice on the consent page sends the browser back.
         guard let clientID = query["client_id"], let client = await store.client(id: clientID) else {
             return RemotePages.problem(
                 400, title: "Honeycrisp doesn't know this client",
@@ -184,29 +187,22 @@ public actor RemoteAccessServer {
                     "Its return address doesn't match what the client registered, so Honeycrisp won't send you there."
             )
         }
-
-        let state = query["state"]
-        func failure(_ error: String, _ description: String) -> HTTPResponse {
-            var parameters = [("error", error), ("error_description", description)]
-            if let state { parameters.append(("state", state)) }
-            parameters.append(("iss", origin.issuer))
-            return HTTPResponse(
-                status: 302,
-                headers: [
-                    "Location": Self.redirectURL(redirect, parameters), "Cache-Control": "no-store",
-                ])
+        func failure(_ message: String) -> HTTPResponse {
+            RemotePages.problem(400, title: "This sign-in link is broken", message: message)
         }
         guard query["response_type"] == "code" else {
-            return failure("unsupported_response_type", "Honeycrisp supports the code flow only.")
+            return failure("Honeycrisp supports the code flow only. Start connecting again from your client.")
         }
         guard let codeChallenge = query["code_challenge"], Self.isPKCEValue(codeChallenge),
             query["code_challenge_method"] == "S256"
         else {
-            return failure("invalid_request", "Honeycrisp requires a PKCE code challenge using S256.")
+            return failure(
+                "Honeycrisp requires a PKCE code challenge using S256. Start connecting again from your client.")
         }
         if let resource = query["resource"], !matchesResource(resource) {
-            return failure("invalid_target", "That resource is not this Honeycrisp server.")
+            return failure("The link asks for a different server than this one.")
         }
+        let state = query["state"]
 
         let passkeys = await store.passkeys().filter { $0.relyingPartyID == origin.relyingPartyID }
         guard !passkeys.isEmpty else { return RemotePages.needsPasskey() }
