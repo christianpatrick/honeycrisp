@@ -93,4 +93,31 @@ struct ConfigPersistenceTests {
         try write(#"{"port": 5}"#, to: url)
         #expect(HoneycrispConfig.load(from: url).automaticUpdateChecks == true)
     }
+
+    @Test("remote access defaults to off on port 41118 with no public URL")
+    func remoteDefaults() {
+        let config = HoneycrispConfig.default
+        #expect(config.remoteAccessEnabled == false)
+        #expect(config.remotePort == 41118)
+        #expect(config.publicURL == nil)
+    }
+
+    @Test("remote access settings round-trip, and a config predating them still loads")
+    func remoteRoundTrip() throws {
+        let url = tempURL()
+        var config = HoneycrispConfig.default
+        config.remoteAccessEnabled = true
+        config.remotePort = 50000
+        config.publicURL = "https://mac.example.ts.net"
+        try config.save(to: url)
+        #expect(HoneycrispConfig.load(from: url) == config)
+
+        let old = tempURL()
+        try write(#"{"port": 5, "bearerToken": "sesame"}"#, to: old)
+        let loaded = HoneycrispConfig.load(from: old)
+        #expect(loaded.port == 5)
+        #expect(loaded.remoteAccessEnabled == false)
+        #expect(loaded.remotePort == 41118)
+        #expect(loaded.publicURL == nil)
+    }
 }
