@@ -45,7 +45,20 @@ public final class AppModel {
         case failed(String)
     }
 
+    /// The remote port (GH-16). Off whenever the hub is paused or remote
+    /// access is switched off.
+    public enum RemoteState: Equatable, Sendable {
+        case off
+        case needsPublicURL
+        case running(port: UInt16)
+        case failed(String)
+    }
+
     public private(set) var serverState: ServerState = .paused
+    public private(set) var remoteState: RemoteState = .off
+    public private(set) var remoteGrants: [RemoteGrant] = []
+    /// Passkeys for the current public URL's host.
+    public private(set) var remotePasskeys: [PasskeyCredential] = []
     public private(set) var config: HoneycrispConfig
     public private(set) var clients: [ConnectedClient] = []
     public private(set) var counts = AuditCounts(requestsToday: 0, approvedLastDay: 0)
@@ -54,6 +67,7 @@ public final class AppModel {
 
     public let configURL: URL
     public let audit: AuditStore
+    public let remoteStore: RemoteAccessStore
 
     private let box: ConfigBox
     private let registry = ClientRegistry()
@@ -61,7 +75,17 @@ public final class AppModel {
     private let presenter: any ApprovalPresenting
     private let executor: any ToolExecutor
     private let portOverride: UInt16?
+    private let remotePortOverride: UInt16?
     private var server: LoopbackHTTPServer?
+    private var router: MCPHTTPRouter?
+    private var remoteServer: LoopbackHTTPServer?
+    private var remoteAccess: RemoteAccessServer?
+    /// Bumps on every stop, so a start that finishes after a stop knows to
+    /// close what it opened.
+    private var remoteGeneration = 0
+    /// Restarts run one at a time, so quick toggles never race two
+    /// listeners for the same port.
+    private var remoteTransition: Task<Void, Never>?
 
     public init(
         configURL: URL = HoneycrispConfig.defaultFileURL,
@@ -69,6 +93,7 @@ public final class AppModel {
         executor: (any ToolExecutor)? = nil,
         presenter: any ApprovalPresenting,
         portOverride: UInt16? = nil,
+        remotePortOverride: UInt16? = nil,
         approvalTimeout: Duration = .seconds(120)
     ) {
         let loaded = HoneycrispConfig.load(from: configURL)
@@ -79,6 +104,11 @@ public final class AppModel {
         self.audit = AuditStore(fileURL: auditURL, maxEntries: loaded.auditMaxEntries)
         self.presenter = presenter
         self.portOverride = portOverride
+        self.remotePortOverride = remotePortOverride
+        // Beside the config, so a test's temporary config gets its own.
+        self.remoteStore = RemoteAccessStore(
+            fileURL: configURL.deletingLastPathComponent()
+                .appendingPathComponent("remote-access.json"))
         self.broker = ApprovalBroker(timeout: approvalTimeout)
         self.executor = executor ?? ServiceExecutor.production(configProvider: { box.current })
 
@@ -105,6 +135,7 @@ public final class AppModel {
             approvals: broker
         )
         let router = MCPHTTPRouter(gateway: gateway, clients: registry)
+        self.router = router
         do {
             let started = try await LoopbackHTTPServer.start(
                 port: portOverride ?? UInt16(clamping: box.current.port),
@@ -116,13 +147,132 @@ public final class AppModel {
         } catch {
             serverState = .failed(
                 (error as? ToolFailure)?.message ?? error.localizedDescription)
+            return
         }
+        await startRemote()
     }
 
     public func pause() {
+        stopRemote()
         server?.stop()
         server = nil
         serverState = .paused
+    }
+
+    // MARK: - Remote access
+
+    /// Starts the remote port when the hub runs, remote access is on, and
+    /// the public URL parses. A failure here never touches the local port.
+    private func startRemote() async {
+        guard remoteServer == nil, isRunning, let router else { return }
+        guard config.remoteAccessEnabled else {
+            remoteState = .off
+            return
+        }
+        guard let origin = RemoteOrigin(publicURL: config.publicURL ?? "") else {
+            remoteState = .needsPublicURL
+            return
+        }
+        let generation = remoteGeneration
+        let access = RemoteAccessServer(
+            origin: origin,
+            store: remoteStore,
+            mcp: { body, client in
+                let routed = await router.handle(body: body, clientHeader: client)
+                return HTTPResponse(status: routed.status, body: routed.body)
+            }
+        )
+        do {
+            let started = try await LoopbackHTTPServer.start(
+                port: remotePortOverride ?? UInt16(clamping: config.remotePort),
+                handler: { request in await access.handle(request) }
+            )
+            guard generation == remoteGeneration, isRunning else {
+                started.stop()
+                return
+            }
+            remoteAccess = access
+            remoteServer = started
+            remoteState = .running(port: started.port)
+        } catch {
+            remoteState = .failed(
+                (error as? ToolFailure)?.message ?? error.localizedDescription)
+        }
+    }
+
+    private func stopRemote() {
+        remoteGeneration += 1
+        remoteServer?.stop()
+        remoteServer = nil
+        remoteAccess = nil
+        remoteState = .off
+    }
+
+    private func restartRemote() async {
+        let previous = remoteTransition
+        let transition = Task { @MainActor [weak self] in
+            await previous?.value
+            guard let self else { return }
+            self.stopRemote()
+            await self.startRemote()
+            await self.refreshRemote()
+        }
+        remoteTransition = transition
+        await transition.value
+    }
+
+    public func updateRemoteAccess(_ enabled: Bool) async {
+        guard enabled != config.remoteAccessEnabled else { return }
+        config.remoteAccessEnabled = enabled
+        persist()
+        await restartRemote()
+    }
+
+    /// Saves the public URL in its normalized form. Returns false and
+    /// changes nothing when the text isn't an https origin; empty text
+    /// clears it.
+    @discardableResult
+    public func updatePublicURL(_ text: String) async -> Bool {
+        let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        let normalized: String?
+        if trimmed.isEmpty {
+            normalized = nil
+        } else if let origin = RemoteOrigin(publicURL: trimmed) {
+            normalized = origin.origin
+        } else {
+            return false
+        }
+        guard normalized != config.publicURL else { return true }
+        config.publicURL = normalized
+        persist()
+        await restartRemote()
+        return true
+    }
+
+    /// The URL to paste into a client as the connector, when one is set.
+    public var remoteConnectorURL: String? {
+        RemoteOrigin(publicURL: config.publicURL ?? "")?.resource
+    }
+
+    /// A one-time passkey setup link, while the remote port runs.
+    public func remoteSetupLink() async -> URL? {
+        await remoteAccess?.makeSetupLink()
+    }
+
+    public func disconnectRemote(grantID: UUID) async {
+        await remoteStore.revokeGrant(id: grantID)
+        await refreshRemote()
+    }
+
+    public func removePasskeys() async {
+        await remoteStore.removeAllPasskeys()
+        await refreshRemote()
+    }
+
+    private func refreshRemote() async {
+        remoteGrants = await remoteStore.grants()
+        let host = RemoteOrigin(publicURL: config.publicURL ?? "")?.relyingPartyID
+        remotePasskeys = await remoteStore.passkeys().filter { $0.relyingPartyID == host }
     }
 
     public func toggleServer() async {
@@ -242,5 +392,6 @@ public final class AppModel {
         clients = await registry.list()
         let stillPending = await broker.pending()
         pendingApprovals = stillPending
+        await refreshRemote()
     }
 }

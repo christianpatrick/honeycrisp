@@ -36,6 +36,14 @@ public struct HoneycrispConfig: Codable, Equatable, Sendable {
     /// Whether the menu bar app checks for updates on its own. The user can
     /// turn this off in Settings and still check manually (HC-034).
     public var automaticUpdateChecks: Bool
+    /// Remote access (GH-16): off by default. When on and the public URL
+    /// parses, a second loopback listener on remotePort serves OAuth and
+    /// /mcp to a tunnel the user runs.
+    public var remoteAccessEnabled: Bool
+    public var remotePort: Int
+    /// The https address the user's tunnel serves, like
+    /// https://mac.tailnet.ts.net. Nothing until the user sets one.
+    public var publicURL: String?
 
     public static let `default`: HoneycrispConfig = {
         // Read-only out of the box: the assistant can read every app but
@@ -53,7 +61,10 @@ public struct HoneycrispConfig: Codable, Equatable, Sendable {
             bearerToken: nil,
             loggingEnabled: false,
             onboardingCompleted: false,
-            automaticUpdateChecks: true
+            automaticUpdateChecks: true,
+            remoteAccessEnabled: false,
+            remotePort: 41118,
+            publicURL: nil
         )
         for app in AppID.allCases {
             config.setLevel(.read, for: app)
@@ -155,6 +166,9 @@ extension HoneycrispConfig {
         case loggingEnabled
         case onboardingCompleted
         case automaticUpdateChecks
+        case remoteAccessEnabled
+        case remotePort
+        case publicURL
     }
 
     public init(from decoder: Decoder) throws {
@@ -203,6 +217,12 @@ extension HoneycrispConfig {
         self.automaticUpdateChecks =
             try container.decodeIfPresent(Bool.self, forKey: .automaticUpdateChecks)
             ?? fallback.automaticUpdateChecks
+        self.remoteAccessEnabled =
+            try container.decodeIfPresent(Bool.self, forKey: .remoteAccessEnabled)
+            ?? fallback.remoteAccessEnabled
+        self.remotePort =
+            try container.decodeIfPresent(Int.self, forKey: .remotePort) ?? fallback.remotePort
+        self.publicURL = try container.decodeIfPresent(String.self, forKey: .publicURL)
     }
 }
 
