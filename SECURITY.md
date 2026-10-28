@@ -34,7 +34,7 @@ A vulnerability is anything that lets data leave your Mac, or lets an action hap
 
 These are intentional and are not security issues on their own:
 
-- The local MCP server binds to loopback only (127.0.0.1) and refuses requests that arrive through a proxy or under another host name. An optional bearer token gates access.
+- The local MCP server binds to loopback only (127.0.0.1) and is not meant to be exposed to a network. It refuses requests that carry a forwarding header or another host name, which catches HTTP tunnels and DNS rebinding. A tunnel that forwards raw TCP, such as `tailscale funnel --tcp`, `ngrok tcp`, or `ssh -R`, passes the caller's own headers and can't be caught, so never point a tunnel at the local port. An optional bearer token gates access.
 - Remote access is off by default. When you turn it on, a second loopback port serves OAuth and MCP to a tunnel you run, and every remote client has to be allowed with your passkey. Anyone who can reach your tunnel can see the sign-in page and register a client, and a remote client you allow gets the same access your permission settings give every client.
 - Outbound actions whose effect leaves your Mac (sending mail, sending a message) require an explicit approval every single time, even when their permission is on.
 - Honeycrisp keeps a local activity log and reads it locally; it has no account, server, or telemetry. Remote access uses a tunnel you run, never a server of Honeycrisp's.
