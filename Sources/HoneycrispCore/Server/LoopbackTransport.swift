@@ -198,7 +198,7 @@ public final class LoopbackHTTPServer: @unchecked Sendable {
 
     /// How long a client gets to deliver its whole request. Handling time
     /// doesn't count, because a send can wait minutes on an approval.
-    static let readTimeout: TimeInterval = 30
+    public static let defaultReadTimeout: TimeInterval = 30
     /// 16 MB is far beyond any sane MCP request and bounds memory.
     static let maxBody = 16_777_216
 
@@ -247,9 +247,10 @@ public final class LoopbackHTTPServer: @unchecked Sendable {
     }
 
     /// A loopback listener that hands every parsed request to the handler.
-    public static func start(port: UInt16, handler: @escaping Handler)
-        async throws -> LoopbackHTTPServer
-    {
+    public static func start(
+        port: UInt16, readTimeout: TimeInterval = defaultReadTimeout,
+        handler: @escaping Handler
+    ) async throws -> LoopbackHTTPServer {
         let parameters = NWParameters.tcp
         guard
             let endpointPort = NWEndpoint.Port(rawValue: port)
@@ -264,7 +265,7 @@ public final class LoopbackHTTPServer: @unchecked Sendable {
         listener.newConnectionHandler = { connection in
             connection.start(queue: queue)
             Task {
-                await Self.serve(connection: connection, handler: handler)
+                await Self.serve(connection: connection, readTimeout: readTimeout, handler: handler)
             }
         }
 
@@ -299,7 +300,9 @@ public final class LoopbackHTTPServer: @unchecked Sendable {
 
     // MARK: - One connection
 
-    private static func serve(connection: NWConnection, handler: Handler) async {
+    private static func serve(
+        connection: NWConnection, readTimeout: TimeInterval, handler: Handler
+    ) async {
         let deadline = ReadDeadline()
         DispatchQueue.global().asyncAfter(deadline: .now() + readTimeout) {
             if deadline.expire() { connection.cancel() }
@@ -358,22 +361,25 @@ public final class LoopbackHTTPServer: @unchecked Sendable {
 
         var body = Data(buffer[headerRange.upperBound...])
         if headers["transfer-encoding"]?.lowercased().contains("chunked") == true {
-            // A tunnel may forward a body without a length.
+            // A tunnel may forward a body without a length. The decoder only
+            // ever sees each received byte once.
+            var decoder = ChunkedDecoder()
+            var pending = body
             while true {
-                let decoded: Data?
+                let complete: Bool
                 do {
-                    decoded = try ChunkedBody.decode(body)
+                    complete = try decoder.feed(pending)
                 } catch {
                     return nil
                 }
-                if let decoded {
-                    body = decoded
+                if complete {
+                    body = decoder.body
                     break
                 }
-                guard body.count <= maxBody,
+                guard decoder.body.count <= maxBody,
                     let chunk = await receive(connection: connection), !chunk.isEmpty
                 else { return nil }
-                body.append(chunk)
+                pending = chunk
             }
         } else {
             let expected = min(max(Int(headers["content-length"] ?? "0") ?? 0, 0), maxBody)

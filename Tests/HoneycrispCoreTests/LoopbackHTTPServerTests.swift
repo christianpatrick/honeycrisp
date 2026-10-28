@@ -1,5 +1,6 @@
 import Foundation
 import MCP
+import Network
 import Testing
 import HoneycrispCore
 
@@ -104,5 +105,30 @@ struct LoopbackHTTPServerTests {
         #expect(http?.statusCode == 201)
         #expect(http?.value(forHTTPHeaderField: "X-Echo") == "/echo")
         #expect(String(decoding: data, as: UTF8.self) == "hello chunks")
+    }
+
+    @Test("a request that stops arriving is dropped at the read deadline", .timeLimit(.minutes(1)))
+    func readDeadline() async throws {
+        let server = try await LoopbackHTTPServer.start(port: 0, readTimeout: 0.3) { _ in
+            HTTPResponse(status: 200)
+        }
+        defer { server.stop() }
+        let connection = NWConnection(
+            host: .ipv4(.loopback), port: try #require(NWEndpoint.Port(rawValue: server.port)),
+            using: .tcp)
+        connection.start(queue: .global())
+        // The headers promise ten bytes of body and only three ever come.
+        connection.send(
+            content: Data("POST /x HTTP/1.1\r\nHost: 127.0.0.1\r\nContent-Length: 10\r\n\r\nabc".utf8),
+            completion: .idempotent)
+        let started = Date()
+        let answer: Data? = await withCheckedContinuation { continuation in
+            connection.receive(minimumIncompleteLength: 1, maximumLength: 4096) { data, _, _, _ in
+                continuation.resume(returning: data)
+            }
+        }
+        connection.cancel()
+        #expect(answer?.isEmpty ?? true)
+        #expect(Date().timeIntervalSince(started) < 10)
     }
 }

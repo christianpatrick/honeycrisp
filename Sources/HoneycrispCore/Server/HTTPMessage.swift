@@ -93,63 +93,88 @@ public enum HTTPForm {
     }
 }
 
-/// Decodes a chunked transfer-encoded body (RFC 9112 section 7.1).
-public enum ChunkedBody {
+/// Decodes a chunked transfer-encoded body (RFC 9112 section 7.1) as it
+/// arrives. Each byte is looked at once, so a slow body costs work in
+/// proportion to its size however it is split across receives.
+public struct ChunkedDecoder {
     public struct Malformed: Error {}
 
+    private enum State: Equatable {
+        case size
+        case data(remaining: Int)
+        case dataEnd(seen: Int)
+        case trailer
+        case done
+    }
+
+    public private(set) var body = Data()
+    private var state = State.size
+    /// The size or trailer line read so far.
+    private var line: [UInt8] = []
+
+    public init() {}
+
+    /// Feeds newly received bytes. True once the last chunk and the
+    /// trailer section have arrived; bytes after that are ignored.
+    public mutating func feed(_ data: Data) throws -> Bool {
+        var index = data.startIndex
+        while index < data.endIndex {
+            switch state {
+            case .done:
+                return true
+            case .data(let remaining):
+                let take = min(remaining, data.endIndex - index)
+                body.append(data[index..<(index + take)])
+                index += take
+                state = take == remaining ? .dataEnd(seen: 0) : .data(remaining: remaining - take)
+            case .dataEnd(let seen):
+                // Exactly CRLF closes every chunk's data.
+                guard data[index] == (seen == 0 ? 0x0D : 0x0A) else { throw Malformed() }
+                index += 1
+                state = seen == 0 ? .dataEnd(seen: 1) : .size
+            case .size, .trailer:
+                line.append(data[index])
+                index += 1
+                // A size line has no business being this long.
+                guard line.count <= 1024 else { throw Malformed() }
+                guard line.count >= 2, line[line.count - 2] == 0x0D, line[line.count - 1] == 0x0A
+                else { continue }
+                let text = String(decoding: line.dropLast(2), as: UTF8.self)
+                line.removeAll(keepingCapacity: true)
+                if state == .trailer {
+                    if text.isEmpty { state = .done }
+                    continue
+                }
+                let digits = text.prefix { $0 != ";" }.trimmingCharacters(in: .whitespaces)
+                // Hex digits only: Int(_:radix:) would also take a sign, and a
+                // negative size would break the arithmetic above.
+                guard !digits.isEmpty, digits.count <= 8, digits.allSatisfy(\.isHexDigit),
+                    let size = Int(digits, radix: 16)
+                else { throw Malformed() }
+                state = size == 0 ? .trailer : .data(remaining: size)
+            }
+        }
+        return state == .done
+    }
+}
+
+/// A whole chunked body at once, for callers that already hold it.
+public enum ChunkedBody {
     /// The body once the terminating chunk has arrived, nil while more is
     /// still to come, and a throw when the framing is broken.
     public static func decode(_ data: Data) throws -> Data? {
-        let bytes = [UInt8](data)
-        var index = 0
-        var body = Data()
-
-        func line() throws -> String? {
-            var end = index
-            while end + 1 < bytes.count {
-                if bytes[end] == 0x0D && bytes[end + 1] == 0x0A {
-                    let text = String(decoding: bytes[index..<end], as: UTF8.self)
-                    index = end + 2
-                    return text
-                }
-                end += 1
-            }
-            // A size line has no business being this long.
-            if bytes.count - index > 1024 { throw Malformed() }
-            return nil
-        }
-
-        while true {
-            guard let sizeLine = try line() else { return nil }
-            let digits = sizeLine.prefix { $0 != ";" }.trimmingCharacters(in: .whitespaces)
-            // Hex digits only: Int(_:radix:) would also take a sign, and a
-            // negative size would trap below.
-            guard !digits.isEmpty, digits.count <= 8, digits.allSatisfy(\.isHexDigit),
-                let size = Int(digits, radix: 16)
-            else {
-                throw Malformed()
-            }
-            if size == 0 {
-                // Trailer fields until the empty line.
-                while true {
-                    guard let trailer = try line() else { return nil }
-                    if trailer.isEmpty { return body }
-                }
-            }
-            guard bytes.count - index >= size + 2 else { return nil }
-            body.append(contentsOf: bytes[index..<(index + size)])
-            index += size
-            guard bytes[index] == 0x0D, bytes[index + 1] == 0x0A else { throw Malformed() }
-            index += 2
-        }
+        var decoder = ChunkedDecoder()
+        return try decoder.feed(data) ? decoder.body : nil
     }
 }
 
 /// The local port answers this Mac only. A tunnel forwards to loopback too,
 /// so the source address can't tell them apart; the Host header and the
-/// forwarding headers a proxy adds can. Refusing them means a tunnel
-/// pointed at the local port by mistake fails closed, and a web page can't
-/// reach it through DNS rebinding (GH-16).
+/// forwarding headers an HTTP proxy adds can. Refusing them means an HTTP
+/// tunnel (Funnel's default, cloudflared, ngrok http) pointed at the local
+/// port by mistake fails closed, and a web page can't reach it through DNS
+/// rebinding (GH-16). A raw TCP forwarder passes the caller's own headers,
+/// so nothing here can catch one.
 public enum LocalRequestGuard {
     private static let loopbackHosts: Set<String> = ["127.0.0.1", "localhost", "::1"]
 

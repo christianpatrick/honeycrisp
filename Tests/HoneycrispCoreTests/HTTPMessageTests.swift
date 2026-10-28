@@ -32,6 +32,36 @@ struct HTTPMessageTests {
         #expect(try ChunkedBody.decode(raw) == Data("Wikipedia".utf8))
     }
 
+    @Test("a chunked body fed a byte at a time decodes the same as all at once")
+    func chunkedIncremental() throws {
+        let raw = Data("4\r\nWiki\r\n5;note=x\r\npedia\r\n0\r\nExpires: never\r\n\r\n".utf8)
+        var decoder = ChunkedDecoder()
+        var finished: [Bool] = []
+        for byte in raw {
+            finished.append(try decoder.feed(Data([byte])))
+        }
+        #expect(finished.last == true)
+        #expect(finished.dropLast().allSatisfy { !$0 })
+        #expect(decoder.body == Data("Wikipedia".utf8))
+    }
+
+    @Test("a chunked body split across receives decodes whole")
+    func chunkedPieces() throws {
+        var decoder = ChunkedDecoder()
+        #expect(try decoder.feed(Data("4\r".utf8)) == false)
+        #expect(try decoder.feed(Data("\nWi".utf8)) == false)
+        #expect(try decoder.feed(Data("ki\r\n0\r".utf8)) == false)
+        #expect(try decoder.feed(Data("\n\r\n".utf8)) == true)
+        #expect(decoder.body == Data("Wiki".utf8))
+    }
+
+    @Test("bytes after a broken chunk end are refused even when they arrive later")
+    func chunkedBrokenEnd() throws {
+        var decoder = ChunkedDecoder()
+        #expect(try decoder.feed(Data("4\r\nWiki".utf8)) == false)
+        #expect(throws: (any Error).self) { try decoder.feed(Data("X\r\n".utf8)) }
+    }
+
     @Test("an incomplete chunked body asks for more")
     func incomplete() throws {
         #expect(try ChunkedBody.decode(Data("4\r\nWi".utf8)) == nil)
