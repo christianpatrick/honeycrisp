@@ -43,6 +43,8 @@ struct HTTPMessageTests {
     func malformed() {
         #expect(throws: (any Error).self) { try ChunkedBody.decode(Data("zz\r\nWiki\r\n0\r\n\r\n".utf8)) }
         #expect(throws: (any Error).self) { try ChunkedBody.decode(Data("4\r\nWikiX\r\n0\r\n\r\n".utf8)) }
+        #expect(throws: (any Error).self) { try ChunkedBody.decode(Data("-1\r\nWiki\r\n0\r\n\r\n".utf8)) }
+        #expect(throws: (any Error).self) { try ChunkedBody.decode(Data("+4\r\nWiki\r\n0\r\n\r\n".utf8)) }
     }
 
     @Test("the local guard accepts loopback hosts with and without ports")

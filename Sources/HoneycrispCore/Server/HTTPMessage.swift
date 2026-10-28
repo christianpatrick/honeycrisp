@@ -122,7 +122,11 @@ public enum ChunkedBody {
         while true {
             guard let sizeLine = try line() else { return nil }
             let digits = sizeLine.prefix { $0 != ";" }.trimmingCharacters(in: .whitespaces)
-            guard !digits.isEmpty, digits.count <= 8, let size = Int(digits, radix: 16) else {
+            // Hex digits only: Int(_:radix:) would also take a sign, and a
+            // negative size would trap below.
+            guard !digits.isEmpty, digits.count <= 8, digits.allSatisfy(\.isHexDigit),
+                let size = Int(digits, radix: 16)
+            else {
                 throw Malformed()
             }
             if size == 0 {
