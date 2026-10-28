@@ -203,10 +203,12 @@ public final class LoopbackHTTPServer: @unchecked Sendable {
     static let maxBody = 16_777_216
 
     private let listener: NWListener
+    private let stopFlag: StopFlag
     public let port: UInt16
 
-    private init(listener: NWListener, port: UInt16) {
+    private init(listener: NWListener, stopFlag: StopFlag, port: UInt16) {
         self.listener = listener
+        self.stopFlag = stopFlag
         self.port = port
     }
 
@@ -261,11 +263,20 @@ public final class LoopbackHTTPServer: @unchecked Sendable {
             host: .ipv4(.loopback), port: endpointPort)
         let listener = try NWListener(using: parameters)
         let queue = DispatchQueue(label: "app.honeycrisp.http.accept")
+        let stopFlag = StopFlag()
 
         listener.newConnectionHandler = { connection in
+            // Cancelling a listener finishes asynchronously, so a connection
+            // can still arrive after stop(). It gets closed unanswered.
+            guard !stopFlag.isStopped else {
+                connection.cancel()
+                return
+            }
             connection.start(queue: queue)
             Task {
-                await Self.serve(connection: connection, readTimeout: readTimeout, handler: handler)
+                await Self.serve(
+                    connection: connection, readTimeout: readTimeout, stopFlag: stopFlag,
+                    handler: handler)
             }
         }
 
@@ -291,23 +302,29 @@ public final class LoopbackHTTPServer: @unchecked Sendable {
             }
             listener.start(queue: queue)
         }
-        return LoopbackHTTPServer(listener: listener, port: readyPort)
+        return LoopbackHTTPServer(listener: listener, stopFlag: stopFlag, port: readyPort)
     }
 
+    /// Stops answering at once: the listener closes, and any request that
+    /// finishes arriving after this goes unanswered.
     public func stop() {
+        stopFlag.stop()
         listener.cancel()
     }
 
     // MARK: - One connection
 
     private static func serve(
-        connection: NWConnection, readTimeout: TimeInterval, handler: Handler
+        connection: NWConnection, readTimeout: TimeInterval, stopFlag: StopFlag,
+        handler: Handler
     ) async {
         let deadline = ReadDeadline()
         DispatchQueue.global().asyncAfter(deadline: .now() + readTimeout) {
             if deadline.expire() { connection.cancel() }
         }
-        guard let request = await readRequest(connection: connection), deadline.finish() else {
+        guard let request = await readRequest(connection: connection), deadline.finish(),
+            !stopFlag.isStopped
+        else {
             connection.cancel()
             return
         }
@@ -420,6 +437,21 @@ private final class ResumeOnce: @unchecked Sendable {
         guard !done else { return }
         done = true
         work()
+    }
+}
+
+/// Set once a server stops, for connections the closing listener still
+/// handed over.
+private final class StopFlag: @unchecked Sendable {
+    private let lock = NSLock()
+    private var stopped = false
+
+    var isStopped: Bool {
+        lock.withLock { stopped }
+    }
+
+    func stop() {
+        lock.withLock { stopped = true }
     }
 }
 
