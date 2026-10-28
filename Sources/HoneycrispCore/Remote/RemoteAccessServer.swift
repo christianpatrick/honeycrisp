@@ -139,7 +139,9 @@ public actor RemoteAccessServer {
                 "Redirect URIs must be https, or http on a loopback address, with no fragment.")
         }
         let name = Self.cleanName(object["client_name"] as? String)
-        guard let client = await store.registerClient(name: name, redirectURIs: uris, now: now())
+        guard
+            let client = await store.registerClient(
+                name: name, redirectURIs: uris, resource: origin.resource, now: now())
         else {
             return failure(
                 "invalid_client_metadata",

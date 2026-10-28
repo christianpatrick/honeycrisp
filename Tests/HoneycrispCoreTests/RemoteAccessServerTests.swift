@@ -302,6 +302,27 @@ struct RemoteAccessServerTests {
         #expect(tooMany.status == 400)
     }
 
+    @Test("registration refuses a fifty-first client while every client holds a live grant")
+    func registrationCap() async throws {
+        let harness = makeHarness()
+        for index in 0..<50 {
+            let id = try await registerClient(harness, name: "Client \(index)")
+            let client = try #require(await harness.store.client(id: id))
+            _ = await harness.store.createGrant(
+                client: client, resource: origin.resource, now: harness.clock.now)
+        }
+        let refused = await harness.server.handle(
+            jsonRequest("/register", ["redirect_uris": [claudeCallback]]))
+        #expect(refused.status == 400)
+        #expect(jsonObject(refused)["error"] as? String == "invalid_client_metadata")
+        #expect(await harness.store.clientCount() == 50)
+
+        harness.clock.advance(31 * 86_400)
+        let accepted = await harness.server.handle(
+            jsonRequest("/register", ["redirect_uris": [claudeCallback]]))
+        #expect(accepted.status == 201)
+    }
+
     @Test("registration trims control characters and caps the name")
     func registrationName() async {
         let harness = makeHarness()

@@ -162,4 +162,53 @@ struct RemoteAccessStoreTests {
         await store.removeAllPasskeys()
         #expect(await store.passkeys().isEmpty)
     }
+
+    @Test("grants past their refresh expiry stop pinning clients and stop listing")
+    func expiredGrants() async throws {
+        let store = RemoteAccessStore(fileURL: tempStoreURL("remote-access.json"))
+        for index in 0..<50 {
+            let client = try #require(
+                await store.registerClient(
+                    name: "Client \(index)", redirectURIs: ["https://a.example/cb"], now: now))
+            _ = await store.createGrant(client: client, resource: resource, now: now)
+        }
+        #expect(
+            await store.registerClient(
+                name: "Late", redirectURIs: ["https://a.example/cb"], resource: resource,
+                now: now + 60) == nil)
+
+        // Thirty days on, every refresh token has expired and nothing can
+        // use those grants again.
+        let later = now + 31 * 86_400
+        #expect(
+            await store.registerClient(
+                name: "New", redirectURIs: ["https://a.example/cb"], resource: resource,
+                now: later) != nil)
+        #expect(await store.liveGrants(resource: resource, now: later).isEmpty)
+    }
+
+    @Test("grants made for another public URL are dropped for good")
+    func oldResourceGrants() async throws {
+        let store = RemoteAccessStore(fileURL: tempStoreURL("remote-access.json"))
+        let client = try #require(
+            await store.registerClient(name: "Old", redirectURIs: ["https://a.example/cb"], now: now))
+        _ = await store.createGrant(client: client, resource: "https://old.example/mcp", now: now)
+        let current = try #require(
+            await store.registerClient(name: "Current", redirectURIs: ["https://a.example/cb"], now: now))
+        _ = await store.createGrant(client: current, resource: resource, now: now)
+
+        let live = await store.liveGrants(resource: resource, now: now)
+        #expect(live.map(\.clientName) == ["Current"])
+        #expect(await store.grants().map(\.clientName) == ["Current"])
+    }
+
+    @Test("without a public URL only expiry decides which grants are live")
+    func liveWithoutResource() async throws {
+        let store = RemoteAccessStore(fileURL: tempStoreURL("remote-access.json"))
+        let client = try #require(
+            await store.registerClient(name: "Kept", redirectURIs: ["https://a.example/cb"], now: now))
+        _ = await store.createGrant(client: client, resource: "https://old.example/mcp", now: now)
+        #expect(await store.liveGrants(resource: nil, now: now).count == 1)
+        #expect(await store.liveGrants(resource: nil, now: now + 31 * 86_400).isEmpty)
+    }
 }

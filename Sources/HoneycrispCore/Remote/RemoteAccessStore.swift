@@ -90,10 +90,14 @@ public actor RemoteAccessStore {
 
     // MARK: - Clients
 
-    /// Registers a client, or returns nil when fifty clients all hold
+    /// Registers a client, or returns nil when fifty clients all hold live
     /// grants. Claude registers a new client on every fresh connection, so
-    /// the oldest clients that never got a grant make room first.
-    public func registerClient(name: String, redirectURIs: [String], now: Date) -> RemoteClient? {
+    /// dead grants go first, then the oldest clients without a grant make
+    /// room.
+    public func registerClient(
+        name: String, redirectURIs: [String], resource: String? = nil, now: Date
+    ) -> RemoteClient? {
+        dropDeadGrants(resource: resource, now: now)
         let granted = Set(state.grants.map(\.clientID))
         while state.clients.count >= Self.maxClients {
             guard let oldest = state.clients.firstIndex(where: { !granted.contains($0.id) }) else {
@@ -124,6 +128,24 @@ public actor RemoteAccessStore {
 
     public func grants() -> [RemoteGrant] {
         state.grants
+    }
+
+    /// The grants a client can still use, for Settings. Dead ones are
+    /// dropped for good first.
+    public func liveGrants(resource: String?, now: Date) -> [RemoteGrant] {
+        dropDeadGrants(resource: resource, now: now)
+        return state.grants
+    }
+
+    /// A grant past its refresh expiry, or made for another public URL, can
+    /// never be used again: its access token always expires first. Keeping
+    /// it would pin its client and list it as connected forever.
+    private func dropDeadGrants(resource: String?, now: Date) {
+        let before = state.grants.count
+        state.grants.removeAll { grant in
+            now >= grant.refreshExpiresAt || (resource.map { $0 != grant.resource } ?? false)
+        }
+        if state.grants.count != before { save() }
     }
 
     public func createGrant(client: RemoteClient, resource: String, now: Date) -> IssuedTokens {

@@ -270,9 +270,11 @@ public final class AppModel {
     }
 
     private func refreshRemote() async {
-        remoteGrants = await remoteStore.grants()
-        let host = RemoteOrigin(publicURL: config.publicURL ?? "")?.relyingPartyID
-        remotePasskeys = await remoteStore.passkeys().filter { $0.relyingPartyID == host }
+        let origin = RemoteOrigin(publicURL: config.publicURL ?? "")
+        remoteGrants = await remoteStore.liveGrants(resource: origin?.resource, now: Date())
+        remotePasskeys = await remoteStore.passkeys().filter {
+            $0.relyingPartyID == origin?.relyingPartyID
+        }
     }
 
     public func toggleServer() async {
