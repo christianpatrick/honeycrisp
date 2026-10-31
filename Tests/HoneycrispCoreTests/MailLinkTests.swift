@@ -110,4 +110,28 @@ struct MailboxLocationTests {
         #expect(location.accountID(among: [accounts[0]]) == accounts[0].id)
         #expect(location.accountID(among: []) == nil)
     }
+
+    @Test("Trash mailboxes are recognized across providers")
+    func trash() throws {
+        let trash = [
+            "imap://christian@p68-imap.mail.me.com/Deleted%20Messages",
+            "imap://work%40example.com@imap.gmail.com/%5BGmail%5D/Trash",
+            "imap://8F2D61A4-1111-2222-3333-444444444444/Deleted%20Items",
+            "imap://someone@imap.example.com/TRASH",
+            "local://localhost/Trash",
+        ]
+        for url in trash {
+            #expect(try #require(MailboxLocation(url: url)).isTrash, "\(url)")
+        }
+        let kept = [
+            "imap://christian@p68-imap.mail.me.com/INBOX",
+            "imap://christian@p68-imap.mail.me.com/Archive",
+            "imap://christian@p68-imap.mail.me.com/Junk",
+            "imap://christian@p68-imap.mail.me.com/Trash%20Talk",
+            "imap://christian@p68-imap.mail.me.com/Trash/Keep",
+        ]
+        for url in kept {
+            #expect(try #require(MailboxLocation(url: url)).isTrash == false, "\(url)")
+        }
+    }
 }

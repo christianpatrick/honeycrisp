@@ -3,13 +3,20 @@ import Testing
 import HoneycrispCore
 
 /// An index reader that hands back one fixed thread, with whatever missing
-/// bodies a test wants, and counts the calls.
+/// bodies a test wants, and counts the calls. locations stands in for the
+/// mailboxes table: message id to mailbox url.
 private actor FakeEnvelopeIndex: EnvelopeIndexReading {
     var threadResult: MailThread
+    var locations: [String: String]
     private(set) var threadCalls = 0
 
-    init(threadResult: MailThread) {
+    init(threadResult: MailThread, locations: [String: String] = [:]) {
         self.threadResult = threadResult
+        self.locations = locations
+    }
+
+    func mailboxURLs(forMessageIDs ids: [String]) async throws -> [String: String] {
+        locations.filter { id, _ in ids.contains(id) }
     }
 
     func search(
@@ -49,9 +56,37 @@ private struct UnusedComposer: MailComposing {
     }
 }
 
-private struct UnusedStateWriter: MailStateWriting {
-    func setState(messageIDs: [String], read: Bool?, flagged: Bool?) async throws -> Int { 0 }
-    func delete(messageIDs: [String]) async throws -> Int { 0 }
+/// A state writer that records what it was asked to change and confirms
+/// only the ids it is told to, so tests can play out Mail answering for
+/// some messages and not others. confirmed nil confirms everything.
+private actor RecordingStateWriter: MailStateWriting {
+    struct StateCall: Equatable {
+        let targets: [MailTarget]
+        let read: Bool?
+        let flagged: Bool?
+    }
+
+    var confirmed: Set<String>?
+    private(set) var stateCalls: [StateCall] = []
+    private(set) var deleteCalls: [[MailTarget]] = []
+
+    init(confirmed: Set<String>? = nil) {
+        self.confirmed = confirmed
+    }
+
+    func setState(_ targets: [MailTarget], read: Bool?, flagged: Bool?) async throws -> [String] {
+        stateCalls.append(StateCall(targets: targets, read: read, flagged: flagged))
+        return answer(targets)
+    }
+
+    func delete(_ targets: [MailTarget]) async throws -> [String] {
+        deleteCalls.append(targets)
+        return answer(targets)
+    }
+
+    private func answer(_ targets: [MailTarget]) -> [String] {
+        targets.map(\.messageID).filter { confirmed?.contains($0) ?? true }
+    }
 }
 
 private let archived = MissingBody(
@@ -92,10 +127,16 @@ private let archivedSource = Data(
     --B--\r
     """.utf8)
 
-private func service(index: FakeEnvelopeIndex, fetcher: FakeBodyFetcher) -> MailService {
-    MailService(
-        reader: index, composer: UnusedComposer(), marker: UnusedStateWriter(), fetcher: fetcher)
+private func service(
+    index: FakeEnvelopeIndex, fetcher: FakeBodyFetcher = FakeBodyFetcher(),
+    writer: RecordingStateWriter = RecordingStateWriter()
+) -> MailService {
+    MailService(reader: index, composer: UnusedComposer(), marker: writer, fetcher: fetcher)
 }
+
+private let inboxURL = "imap://8F2D61A4-1111-2222-3333-444444444444/INBOX"
+private let junkURL = "imap://8F2D61A4-1111-2222-3333-444444444444/Junk"
+private let trashURL = "imap://christian@p68-imap.mail.me.com/Deleted%20Messages"
 
 @Suite("Mail service")
 struct MailServiceTests {
@@ -166,5 +207,129 @@ struct MailServiceTests {
         #expect(body.hasPrefix("(body unavailable)"))
         #expect(body.contains("System Settings"))
         #expect(result.messages.first?.body == "Planning looks good.")
+    }
+}
+
+/// GH-18: writes go to each message's own mailbox, and only what Mail
+/// confirms is reported as done.
+@Suite("Mail writes")
+struct MailWriteTests {
+    @Test("marking read hands the writer each message with its mailbox")
+    func markReadTargets() async throws {
+        let index = FakeEnvelopeIndex(
+            threadResult: thread(missing: []), locations: ["35450": junkURL, "101": inboxURL])
+        let writer = RecordingStateWriter()
+        let marked = try await service(index: index, writer: writer)
+            .markRead(messageIDs: ["35450", "101"])
+
+        #expect(marked == 2)
+        #expect(
+            await writer.stateCalls == [
+                .init(
+                    targets: [
+                        MailTarget(messageID: "35450", mailboxURL: junkURL),
+                        MailTarget(messageID: "101", mailboxURL: inboxURL),
+                    ],
+                    read: true, flagged: nil)
+            ])
+    }
+
+    @Test("flagging goes through the same targets")
+    func setStateTargets() async throws {
+        let index = FakeEnvelopeIndex(
+            threadResult: thread(missing: []), locations: ["101": inboxURL])
+        let writer = RecordingStateWriter()
+        let changed = try await service(index: index, writer: writer)
+            .setState(messageIDs: ["101"], read: nil, flagged: true)
+
+        #expect(changed == 1)
+        #expect(
+            await writer.stateCalls == [
+                .init(
+                    targets: [MailTarget(messageID: "101", mailboxURL: inboxURL)],
+                    read: nil, flagged: true)
+            ])
+    }
+
+    @Test("an id the index does not know fails before Mail is asked")
+    func unknownID() async throws {
+        let index = FakeEnvelopeIndex(
+            threadResult: thread(missing: []), locations: ["101": inboxURL])
+        let writer = RecordingStateWriter()
+        let error = await #expect(throws: ToolFailure.self) {
+            _ = try await service(index: index, writer: writer)
+                .markRead(messageIDs: ["101", "999"])
+        }
+        #expect(error?.message.contains("999") == true)
+        #expect(await writer.stateCalls.isEmpty)
+    }
+
+    @Test("a message Mail does not confirm is never reported as marked")
+    func unconfirmedSingle() async throws {
+        // The Junk reproduction: Mail found nothing to change.
+        let index = FakeEnvelopeIndex(
+            threadResult: thread(missing: []), locations: ["35450": junkURL])
+        let writer = RecordingStateWriter(confirmed: [])
+        let error = await #expect(throws: ToolFailure.self) {
+            _ = try await service(index: index, writer: writer).markRead(messageIDs: ["35450"])
+        }
+        #expect(error?.message.contains("35450") == true)
+        #expect(error?.message.contains("search again") == true)
+    }
+
+    @Test("a thread Mail only partly confirms says how many changed and which did not")
+    func unconfirmedPartial() async throws {
+        let index = FakeEnvelopeIndex(
+            threadResult: thread(missing: []),
+            locations: ["101": inboxURL, "102": inboxURL, "103": junkURL])
+        let writer = RecordingStateWriter(confirmed: ["101", "102"])
+        let error = await #expect(throws: ToolFailure.self) {
+            _ = try await service(index: index, writer: writer)
+                .setState(messageIDs: ["101", "102", "103"], read: true, flagged: nil)
+        }
+        let message = try #require(error?.message)
+        #expect(message.contains("2 of 3"))
+        #expect(message.contains("103"))
+        #expect(!message.contains("101"))
+    }
+
+    @Test("delete refuses mail already in the Trash and never asks Mail")
+    func deleteRefusesTrash() async throws {
+        let index = FakeEnvelopeIndex(
+            threadResult: thread(missing: []), locations: ["101": inboxURL, "77": trashURL])
+        let writer = RecordingStateWriter()
+        let error = await #expect(throws: ToolFailure.self) {
+            _ = try await service(index: index, writer: writer).delete(messageIDs: ["77"])
+        }
+        #expect(error?.message.contains("Trash") == true)
+        #expect(await writer.deleteCalls.isEmpty)
+    }
+
+    @Test("deleting a thread skips the messages already in the Trash")
+    func deleteSkipsTrash() async throws {
+        let index = FakeEnvelopeIndex(
+            threadResult: thread(missing: []), locations: ["101": inboxURL, "77": trashURL])
+        let writer = RecordingStateWriter()
+        let deleted = try await service(index: index, writer: writer)
+            .delete(messageIDs: ["101", "77"])
+        #expect(deleted == 1)
+        #expect(
+            await writer.deleteCalls == [[MailTarget(messageID: "101", mailboxURL: inboxURL)]])
+    }
+
+    @Test("delete moves mail from any other mailbox, once Mail confirms it")
+    func deleteConfirmed() async throws {
+        let index = FakeEnvelopeIndex(
+            threadResult: thread(missing: []), locations: ["35450": junkURL])
+        let writer = RecordingStateWriter()
+        let deleted = try await service(index: index, writer: writer).delete(messageIDs: ["35450"])
+        #expect(deleted == 1)
+        #expect(
+            await writer.deleteCalls == [[MailTarget(messageID: "35450", mailboxURL: junkURL)]])
+
+        let refused = RecordingStateWriter(confirmed: [])
+        await #expect(throws: ToolFailure.self) {
+            _ = try await service(index: index, writer: refused).delete(messageIDs: ["35450"])
+        }
     }
 }
