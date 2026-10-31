@@ -59,6 +59,9 @@ private struct UnusedComposer: MailComposing {
 /// A state writer that records what it was asked to change and confirms
 /// only the ids it is told to, so tests can play out Mail answering for
 /// some messages and not others. confirmed nil confirms everything.
+/// stopsAfter plays out Mail going quiet partway through: the writer
+/// confirms that many targets, then stops with a timeout. trashNames is
+/// what Mail reports as its Trash mailboxes.
 private actor RecordingStateWriter: MailStateWriting {
     struct StateCall: Equatable {
         let targets: [MailTarget]
@@ -67,25 +70,40 @@ private actor RecordingStateWriter: MailStateWriting {
     }
 
     var confirmed: Set<String>?
+    var stopsAfter: Int?
+    var trashNames: [String]
     private(set) var stateCalls: [StateCall] = []
     private(set) var deleteCalls: [[MailTarget]] = []
 
-    init(confirmed: Set<String>? = nil) {
+    init(
+        confirmed: Set<String>? = nil, stopsAfter: Int? = nil,
+        trashNames: [String] = ["Deleted Messages"]
+    ) {
         self.confirmed = confirmed
+        self.stopsAfter = stopsAfter
+        self.trashNames = trashNames
     }
 
     func setState(_ targets: [MailTarget], read: Bool?, flagged: Bool?) async throws -> [String] {
         stateCalls.append(StateCall(targets: targets, read: read, flagged: flagged))
-        return answer(targets)
+        return try answer(targets)
     }
 
     func delete(_ targets: [MailTarget]) async throws -> [String] {
         deleteCalls.append(targets)
-        return answer(targets)
+        return try answer(targets)
     }
 
-    private func answer(_ targets: [MailTarget]) -> [String] {
-        targets.map(\.messageID).filter { confirmed?.contains($0) ?? true }
+    func trashMailboxNames() async throws -> [String] { trashNames }
+
+    private func answer(_ targets: [MailTarget]) throws -> [String] {
+        let ids = targets.map(\.messageID).filter { confirmed?.contains($0) ?? true }
+        if let stopsAfter, stopsAfter < targets.count {
+            throw MailWriteStopped(
+                confirmed: Array(ids.prefix(stopsAfter)),
+                reason: "Mail took too long to answer. It may be busy syncing; try again in a moment.")
+        }
+        return ids
     }
 }
 
@@ -331,5 +349,79 @@ struct MailWriteTests {
         await #expect(throws: ToolFailure.self) {
             _ = try await service(index: index, writer: refused).delete(messageIDs: ["35450"])
         }
+    }
+}
+
+/// Review follow-ups to GH-18: what Mail itself calls the Trash, and a
+/// writer that stops partway through a thread.
+@Suite("Mail write edges")
+struct MailWriteEdgeTests {
+    @Test("delete skips a mailbox Mail reports as its Trash, whatever its name")
+    func deleteSkipsMailTrash() async throws {
+        let papierkorb = "imap://work%40example.com@imap.gmail.com/%5BGmail%5D/Papierkorb"
+        let index = FakeEnvelopeIndex(
+            threadResult: thread(missing: []), locations: ["101": inboxURL, "88": papierkorb])
+        let writer = RecordingStateWriter(trashNames: ["Papierkorb"])
+        let deleted = try await service(index: index, writer: writer)
+            .delete(messageIDs: ["101", "88"])
+        #expect(deleted == 1)
+        #expect(
+            await writer.deleteCalls == [[MailTarget(messageID: "101", mailboxURL: inboxURL)]])
+
+        let error = await #expect(throws: ToolFailure.self) {
+            _ = try await service(index: index, writer: writer).delete(messageIDs: ["88"])
+        }
+        #expect(error?.message.contains("Trash") == true)
+    }
+
+    @Test("when Mail cannot say where the Trash is, nothing is deleted")
+    func deleteFailsClosedWithoutTrashNames() async throws {
+        let index = FakeEnvelopeIndex(
+            threadResult: thread(missing: []), locations: ["101": inboxURL])
+        let writer = RecordingStateWriter(trashNames: [])
+        await #expect(throws: ToolFailure.self) {
+            _ = try await service(index: index, writer: writer).delete(messageIDs: ["101"])
+        }
+        #expect(await writer.deleteCalls.isEmpty)
+    }
+
+    @Test("Mail going quiet partway through a thread still says what changed")
+    func stoppedPartway() async throws {
+        let index = FakeEnvelopeIndex(
+            threadResult: thread(missing: []),
+            locations: ["101": inboxURL, "102": inboxURL, "103": junkURL])
+        let writer = RecordingStateWriter(stopsAfter: 1)
+        let error = await #expect(throws: ToolFailure.self) {
+            _ = try await service(index: index, writer: writer)
+                .markRead(messageIDs: ["101", "102", "103"])
+        }
+        let message = try #require(error?.message)
+        #expect(message.contains("1 of 3"))
+        #expect(message.contains("took too long"))
+    }
+
+    @Test("Mail going quiet on a single message passes its reason through")
+    func stoppedSingle() async throws {
+        let index = FakeEnvelopeIndex(
+            threadResult: thread(missing: []), locations: ["101": inboxURL])
+        let writer = RecordingStateWriter(stopsAfter: 0)
+        let error = await #expect(throws: ToolFailure.self) {
+            _ = try await service(index: index, writer: writer).markRead(messageIDs: ["101"])
+        }
+        #expect(
+            error?.message
+                == "Mail took too long to answer. It may be busy syncing; try again in a moment.")
+    }
+
+    @Test("an unconfirmed change does not claim the message is untouched")
+    func unconfirmedWording() async throws {
+        let index = FakeEnvelopeIndex(
+            threadResult: thread(missing: []), locations: ["101": inboxURL])
+        let writer = RecordingStateWriter(confirmed: [])
+        let error = await #expect(throws: ToolFailure.self) {
+            _ = try await service(index: index, writer: writer)
+                .setState(messageIDs: ["101"], read: true, flagged: true)
+        }
+        #expect(error?.message.contains("unchanged") == false)
     }
 }
