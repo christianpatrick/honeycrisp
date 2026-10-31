@@ -118,10 +118,13 @@ public struct AppleEventMailStateWriter: MailStateWriting {
     private static func matches(_ message: NSAppleEventDescriptor, target: NSAppleEventDescriptor)
         throws -> Int?
     {
+        try matchCount { try MailEvents.get("ID  ", from: message, target: target) }
+    }
+
+    /// Mail's answer to an id check, read as a count: see matches.
+    static func matchCount(_ answer: () throws -> NSAppleEventDescriptor?) throws -> Int? {
         do {
-            guard let value = try MailEvents.get("ID  ", from: message, target: target) else {
-                return nil
-            }
+            guard let value = try answer() else { return nil }
             return MailEvents.items(of: value).count
         } catch let failure as ToolFailure {
             throw failure
