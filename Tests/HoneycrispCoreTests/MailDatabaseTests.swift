@@ -224,6 +224,19 @@ struct MailDatabaseTests {
         #expect(body == "Lunch Friday?\nRSVP by Thursday.")
     }
 
+    @Test("mailboxURLs finds where each message lives, for write targeting")
+    func mailboxURLs() async throws {
+        let fixture = try makeMailFixture()
+        let database = MailDatabase(indexPath: fixture.index, mailRoot: fixture.root)
+        let found = try await database.mailboxURLs(forMessageIDs: ["101", "102", "999", "nope"])
+        #expect(
+            found == [
+                "101": "imap://chris@mail.example/INBOX",
+                "102": "imap://chris@mail.example/Sent%20Messages",
+            ])
+        #expect(try await database.mailboxURLs(forMessageIDs: []) == [:])
+    }
+
     @Test("messageSummary resolves one message for reply targeting")
     func messageSummary() async throws {
         let fixture = try makeMailFixture()

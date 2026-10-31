@@ -169,6 +169,30 @@ public actor MailDatabase: EnvelopeIndexReading {
         return found
     }
 
+    public func mailboxURLs(forMessageIDs ids: [String]) async throws -> [String: String] {
+        let rowIDs = ids.compactMap { Int64($0) }
+        guard !rowIDs.isEmpty else { return [:] }
+        let db = try open()
+        let placeholders = rowIDs.indices.map { "?\($0 + 1)" }.joined(separator: ", ")
+        let sql = """
+            SELECT m.ROWID, mb.url
+            FROM messages m
+            JOIN mailboxes mb ON mb.ROWID = m.mailbox
+            WHERE m.ROWID IN (\(placeholders))
+            """
+        var found: [String: String] = [:]
+        try query(db, sql, bind: { statement in
+            for (index, rowID) in rowIDs.enumerated() {
+                sqlite3_bind_int64(statement, Int32(index + 1), rowID)
+            }
+        }) { statement in
+            if let url = column(statement, 1) {
+                found[String(sqlite3_column_int64(statement, 0))] = url
+            }
+        }
+        return found
+    }
+
     private static func summaryRow(_ statement: OpaquePointer) -> MailMessageSummary {
         MailMessageSummary(
             id: String(sqlite3_column_int64(statement, 0)),

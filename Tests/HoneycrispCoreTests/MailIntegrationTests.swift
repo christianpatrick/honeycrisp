@@ -28,25 +28,46 @@ struct MailIntegrationTests {
         #expect(!thread.messages.isEmpty)
     }
 
-    @Test("flag state toggles and restores on the newest inbox message")
+    @Test("flag state toggles and restores on the newest inbox and archived messages")
     func flagRoundTrip() async throws {
         let database = MailDatabase()
-        let inbox = try await database.search(
+        let writer = AppleEventMailStateWriter()
+        for mailbox in ["INBOX", "Archive"] {
+            let newest = try await database.search(
+                query: nil, mailbox: mailbox, from: nil, to: nil,
+                since: nil, until: nil, unreadOnly: false, limit: 1)
+            guard let message = newest.first else { continue }
+            let url = try #require(
+                try await database.mailboxURLs(forMessageIDs: [message.id])[message.id])
+            let target = MailTarget(messageID: message.id, mailboxURL: url)
+
+            // Toggle away from the message's real state and back, so the
+            // mailbox ends exactly where it started.
+            let status = try await writer.flaggedStatus(of: target)
+            let original = try #require(status as Bool?)
+            let toggled = try await writer.setState([target], read: nil, flagged: !original)
+            #expect(toggled == [message.id])
+            #expect(try await writer.flaggedStatus(of: target) == !original)
+
+            let restored = try await writer.setState([target], read: nil, flagged: original)
+            #expect(restored == [message.id])
+            #expect(try await writer.flaggedStatus(of: target) == original)
+        }
+    }
+
+    @Test("a message Mail cannot find comes back unconfirmed, not changed")
+    func missingMessageUnconfirmed() async throws {
+        let database = MailDatabase()
+        let newest = try await database.search(
             query: nil, mailbox: "INBOX", from: nil, to: nil,
             since: nil, until: nil, unreadOnly: false, limit: 1)
-        let message = try #require(inbox.first)
+        let message = try #require(newest.first)
+        let url = try #require(
+            try await database.mailboxURLs(forMessageIDs: [message.id])[message.id])
+        let ghost = MailTarget(messageID: "2147483000", mailboxURL: url)
         let writer = AppleEventMailStateWriter()
-
-        // Toggle away from the message's real state and back, so the
-        // mailbox ends exactly where it started.
-        let original = try await writer.flaggedStatus(messageID: message.id)
-        let toggledCount = try await writer.setState(
-            messageIDs: [message.id], read: nil, flagged: !original)
-        #expect(toggledCount == 1)
-        #expect(try await writer.flaggedStatus(messageID: message.id) == !original)
-
-        _ = try await writer.setState(messageIDs: [message.id], read: nil, flagged: original)
-        #expect(try await writer.flaggedStatus(messageID: message.id) == original)
+        #expect(try await writer.setState([ghost], read: true, flagged: nil).isEmpty)
+        #expect(try await writer.delete([ghost]).isEmpty)
     }
 
     @Test("recent rows carry well formed links when the index keeps the header")
