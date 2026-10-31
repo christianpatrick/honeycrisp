@@ -23,7 +23,9 @@ enum MailEvents {
 
     /// The id, user name, and server name of every enabled account: three
     /// gets over the same whose clause, so the lists line up. A disabled
-    /// account cannot do anything, so it never matches.
+    /// account cannot do anything, so it never matches. The ids are the
+    /// point; a failed user name or server name get leaves those empty
+    /// instead of losing every account, since most urls match on the id.
     static func enabledAccounts(target: NSAppleEventDescriptor) throws -> [MailAccountRecord] {
         guard
             let enabled = comparison(
@@ -32,8 +34,8 @@ enum MailEvents {
                 want: "mact", from: NSAppleEventDescriptor.null(), form: "test", seld: enabled)
         else { return [] }
         let ids = try strings(of: "ID  ", from: accounts, target: target)
-        let users = try strings(of: "unme", from: accounts, target: target)
-        let servers = try strings(of: "host", from: accounts, target: target)
+        let users = try optionalStrings(of: "unme", from: accounts, target: target)
+        let servers = try optionalStrings(of: "host", from: accounts, target: target)
         return ids.indices.map { index in
             MailAccountRecord(
                 id: ids[index],
@@ -102,6 +104,17 @@ enum MailEvents {
         return record.coerce(toDescriptorType: code("obj "))
     }
 
+    /// every <class> of <container>: the absolute ordinal all.
+    static func every(_ className: String, of container: NSAppleEventDescriptor)
+        -> NSAppleEventDescriptor?
+    {
+        var all = code("all ")
+        guard let ordinal = NSAppleEventDescriptor(
+            descriptorType: code("abso"), bytes: &all, length: MemoryLayout<FourCharCode>.size)
+        else { return nil }
+        return specifier(want: className, from: container, form: "indx", seld: ordinal)
+    }
+
     static func property(_ name: String, of container: NSAppleEventDescriptor)
         -> NSAppleEventDescriptor?
     {
@@ -163,6 +176,20 @@ enum MailEvents {
     ) throws -> [String] {
         guard let value = try get(name, from: container, target: target) else { return [] }
         return items(of: value).compactMap(\.stringValue)
+    }
+
+    /// strings(of:), except that any error but an Automation block is an
+    /// empty list.
+    private static func optionalStrings(
+        of name: String, from container: NSAppleEventDescriptor, target: NSAppleEventDescriptor
+    ) throws -> [String] {
+        do {
+            return try strings(of: name, from: container, target: target)
+        } catch let failure as ToolFailure {
+            throw failure
+        } catch {
+            return []
+        }
     }
 
     /// A whose clause answers with a list even for one match, so unwrap

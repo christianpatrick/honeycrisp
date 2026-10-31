@@ -200,6 +200,22 @@ public protocol MailComposing: Sendable {
 public protocol MailStateWriting: Sendable {
     func setState(_ targets: [MailTarget], read: Bool?, flagged: Bool?) async throws -> [String]
     func delete(_ targets: [MailTarget]) async throws -> [String]
+    /// The names Mail gives the mailboxes inside its Trash, one per
+    /// account, so delete can skip mail already there whatever the server
+    /// calls the folder.
+    func trashMailboxNames() async throws -> [String]
+}
+
+/// Thrown by a writer when Mail stops answering partway through, carrying
+/// the ids it had already confirmed so the error can say what changed.
+public struct MailWriteStopped: Error, Equatable {
+    public let confirmed: [String]
+    public let reason: String
+
+    public init(confirmed: [String], reason: String) {
+        self.confirmed = confirmed
+        self.reason = reason
+    }
 }
 
 /// Asks Mail for message sources it has not downloaded yet (GH-12), the
@@ -318,25 +334,56 @@ public struct MailService: MailServicing {
     /// confirms counts (GH-18).
     public func setState(messageIDs: [String], read: Bool?, flagged: Bool?) async throws -> Int {
         let targets = try await targets(for: messageIDs)
-        let confirmed = try await marker.setState(targets, read: read, flagged: flagged)
+        let confirmed = try await Self.confirming(targets) {
+            try await marker.setState(targets, read: read, flagged: flagged)
+        }
         return try Self.requireConfirmed(confirmed, of: targets)
     }
 
     /// Mail already in the Trash is skipped, because Mail's delete on a
     /// message there can erase it for good and Honeycrisp's delete only
-    /// ever moves mail to the Trash. When nothing else is left, say so.
+    /// ever moves mail to the Trash. A mailbox counts as the Trash when its
+    /// name says so or when Mail lists it inside its Trash, and when Mail
+    /// cannot say where the Trash is, nothing is deleted.
     public func delete(messageIDs: [String]) async throws -> Int {
         let targets = try await targets(for: messageIDs)
-        let movable = targets.filter { MailboxLocation(url: $0.mailboxURL)?.isTrash != true }
-        guard !movable.isEmpty || targets.isEmpty else {
+        guard !targets.isEmpty else { return 0 }
+        let trashNames = Set(try await marker.trashMailboxNames().map { $0.lowercased() })
+        guard !trashNames.isEmpty else {
+            throw ToolFailure(
+                "Mail did not say which mailbox is its Trash, so Honeycrisp deleted nothing. Try again in a moment."
+            )
+        }
+        let movable = targets.filter { target in
+            guard let location = MailboxLocation(url: target.mailboxURL) else { return true }
+            let last = location.path.split(separator: "/").last.map(String.init) ?? location.path
+            return !location.isTrash && !trashNames.contains(last.lowercased())
+                && !trashNames.contains(location.path.lowercased())
+        }
+        guard !movable.isEmpty else {
             throw ToolFailure(
                 targets.count == 1
                     ? "That message is already in the Trash, and Honeycrisp only moves mail to the Trash."
                     : "Those messages are already in the Trash, and Honeycrisp only moves mail to the Trash."
             )
         }
-        let confirmed = try await marker.delete(movable)
+        let confirmed = try await Self.confirming(movable) { try await marker.delete(movable) }
         return try Self.requireConfirmed(confirmed, of: movable)
+    }
+
+    /// Runs a write and turns a writer that stopped partway into a failure
+    /// that still says how many messages changed.
+    private static func confirming(
+        _ targets: [MailTarget], _ write: () async throws -> [String]
+    ) async throws -> [String] {
+        do {
+            return try await write()
+        } catch let stopped as MailWriteStopped {
+            guard !stopped.confirmed.isEmpty else { throw ToolFailure(stopped.reason) }
+            throw ToolFailure(
+                "Mail confirmed \(stopped.confirmed.count) of \(targets.count) messages before it stopped answering. \(stopped.reason)"
+            )
+        }
     }
 
     /// Message ids to targets through the Envelope Index. An id the index
@@ -366,11 +413,11 @@ public struct MailService: MailServicing {
         guard !missing.isEmpty else { return targets.count }
         if targets.count == 1 {
             throw ToolFailure(
-                "Mail did not confirm the change to message \(missing[0]), so it is unchanged. It may have moved since you searched; search again and retry."
+                "Mail did not confirm the change to message \(missing[0]). It may have moved since you searched; search again and retry."
             )
         }
         throw ToolFailure(
-            "Mail confirmed \(targets.count - missing.count) of \(targets.count) messages. These did not change: \(missing.joined(separator: ", ")). They may have moved since you searched; search again and retry."
+            "Mail confirmed \(targets.count - missing.count) of \(targets.count) messages. Mail did not confirm these: \(missing.joined(separator: ", ")). They may have moved since you searched; search again and retry."
         )
     }
 }

@@ -190,7 +190,7 @@ public enum ToolRegistry {
         ),
         "mail_update": Definition(
             description:
-                "Change a message's read or flagged state, or a whole thread's with thread_id. Pass read or flagged or both. Works on inbox messages; Mail syncs the change to your mail server.",
+                "Change a message's read or flagged state, or a whole thread's with thread_id. Pass read or flagged or both. Works in any mailbox; Mail syncs the change to your mail server.",
             schema: schema(
                 properties: [
                     "message_id": prop("string", "One message id from mail_search or mail_read."),
@@ -202,7 +202,7 @@ public enum ToolRegistry {
         ),
         "mail_delete": Definition(
             description:
-                "Move a message to Mail's Trash, or a whole thread with thread_id. Works on inbox messages; Mail syncs the change to your mail server.",
+                "Move a message to Mail's Trash, or a whole thread with thread_id. Works in any mailbox; Mail syncs the change to your mail server.",
             schema: schema(
                 properties: [
                     "message_id": prop("string", "One message id from mail_search or mail_read."),
