@@ -374,6 +374,24 @@ struct MailWriteEdgeTests {
         #expect(error?.message.contains("Trash") == true)
     }
 
+    @Test("the Trash name list holds even when Mail names its Trash differently")
+    func deleteSkipsNamedTrash() async throws {
+        let gmailTrash = "imap://work%40example.com@imap.gmail.com/%5BGmail%5D/Trash"
+        let index = FakeEnvelopeIndex(
+            threadResult: thread(missing: []),
+            locations: ["101": inboxURL, "77": trashURL, "78": gmailTrash])
+        let writer = RecordingStateWriter(trashNames: ["Papierkorb"])
+        let deleted = try await service(index: index, writer: writer)
+            .delete(messageIDs: ["101", "77", "78"])
+        #expect(deleted == 1)
+        #expect(
+            await writer.deleteCalls == [[MailTarget(messageID: "101", mailboxURL: inboxURL)]])
+
+        await #expect(throws: ToolFailure.self) {
+            _ = try await service(index: index, writer: writer).delete(messageIDs: ["77"])
+        }
+    }
+
     @Test("when Mail cannot say where the Trash is, nothing is deleted")
     func deleteFailsClosedWithoutTrashNames() async throws {
         let index = FakeEnvelopeIndex(
