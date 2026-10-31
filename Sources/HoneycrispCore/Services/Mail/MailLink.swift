@@ -53,6 +53,17 @@ struct MailboxLocation: Equatable, Sendable {
         self.isLocal = scheme.lowercased() == "local"
     }
 
+    /// Whether this is the mailbox a provider uses as its Trash, judged by
+    /// the last path component without case: iCloud's Deleted Messages,
+    /// Gmail's [Gmail]/Trash, Exchange's Deleted Items, and plain Trash or
+    /// Bin elsewhere (GH-18).
+    var isTrash: Bool {
+        let last = path.split(separator: "/").last.map(String.init) ?? path
+        return Self.trashNames.contains(last.lowercased())
+    }
+
+    private static let trashNames: Set<String> = ["trash", "deleted messages", "deleted items", "bin"]
+
     /// The id of the account this mailbox belongs to: an account whose id
     /// is the url host, else the one account on that server, else the one
     /// on that server with that user name, else the only account there is.
