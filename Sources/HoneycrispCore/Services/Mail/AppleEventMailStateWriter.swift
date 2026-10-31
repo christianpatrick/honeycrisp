@@ -6,8 +6,9 @@ import Foundation
 /// moves the message to its Trash. Each message is addressed in its own
 /// account and mailbox through MailEvents, never through the unified inbox,
 /// which timed out on big inboxes and matched nothing outside an inbox
-/// (GH-18). A change counts only once Mail reads it back, because a whose
-/// clause that matches nothing is not an error to Mail. Mail updates its
+/// (GH-18). A change counts only once Mail reads it back, because the old
+/// whose clause that matched nothing was not an error to Mail, and a read
+/// back is the only proof the change landed. Mail updates its
 /// own store and syncs upstream; we never touch the Envelope Index. Grown
 /// from the HC-021 read marker for HC-041.
 public struct AppleEventMailStateWriter: MailStateWriting {
@@ -111,13 +112,26 @@ public struct AppleEventMailStateWriter: MailStateWriting {
     }
 
     /// How many messages the specifier matches right now, by asking for
-    /// their ids. A whose clause with no match answers with an empty list.
-    /// nil when Mail gave no answer at all, which is never read as zero.
+    /// their ids. Mail answers a message that is not there with no such
+    /// object (-1728, or -1719 for a bad index), which is zero. nil when
+    /// Mail gave no answer at all, which is never read as zero.
     private static func matches(_ message: NSAppleEventDescriptor, target: NSAppleEventDescriptor)
         throws -> Int?
     {
-        try attempt({ try MailEvents.get("ID  ", from: message, target: target) })
-            .map { MailEvents.items(of: $0).count }
+        do {
+            guard let value = try MailEvents.get("ID  ", from: message, target: target) else {
+                return nil
+            }
+            return MailEvents.items(of: value).count
+        } catch let failure as ToolFailure {
+            throw failure
+        } catch let error as NSError where error.code == -1712 {
+            throw ToolFailure(timedOut)
+        } catch let error as NSError where error.code == -1728 || error.code == -1719 {
+            return 0
+        } catch {
+            return nil
+        }
     }
 
     /// Mail moves a deleted message out of its mailbox as part of the

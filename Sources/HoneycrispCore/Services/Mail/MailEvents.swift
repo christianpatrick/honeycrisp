@@ -6,7 +6,7 @@ import Foundation
 /// enabled account list, and addressing a message in its own account and
 /// mailbox from its Envelope Index mailbox url. Codes: account mact with id
 /// "ID  ", user name unme, server name host, and enabled isac; mailbox mbxp
-/// by name; message mssg whose id "ID  " = N. No osascript, no AppleScript
+/// by name; message mssg by id "ID  ". No osascript, no AppleScript
 /// source. Only an Automation block is translated here; every other Apple
 /// event error reaches the caller as is, because the fetcher and the writer
 /// treat them differently.
@@ -46,7 +46,7 @@ enum MailEvents {
 
     // MARK: - Targeting
 
-    /// message of mailbox "<path>" of account id "<uuid>" whose id = N, or
+    /// message id N of mailbox "<path>" of account id "<uuid>", or
     /// of the application for a mailbox On My Mac. nil when the url does not
     /// parse, the id is not one Mail can hold, or no enabled account matches.
     static func message(_ target: MailTarget, among accounts: [MailAccountRecord])
@@ -83,13 +83,14 @@ enum MailEvents {
             seld: NSAppleEventDescriptor(string: path))
     }
 
-    /// message of <mailbox> whose id = N, the HC-021 test.
+    /// message id N of <mailbox>. Mail looks the id up directly instead of
+    /// testing every message the way "whose id = N" does, which took
+    /// seconds on a big Archive (GH-18).
     private static func message(id: Int32, in mailbox: NSAppleEventDescriptor)
         -> NSAppleEventDescriptor?
     {
-        guard let test = comparison(property: "ID  ", equals: NSAppleEventDescriptor(int32: id))
-        else { return nil }
-        return specifier(want: "mssg", from: mailbox, form: "test", seld: test)
+        specifier(
+            want: "mssg", from: mailbox, form: "ID  ", seld: NSAppleEventDescriptor(int32: id))
     }
 
     static func specifier(
