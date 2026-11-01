@@ -54,6 +54,7 @@ Honeycrisp is a local MCP server for macOS that gives any MCP client fast, priva
 - Full sentences in user-facing copy. Sentence case. No emoji in product copy. The README speaks as Christian in the first person singular.
 - Privacy is phrased concretely (on your Mac, nothing uploaded, a local activity list you can clear), never as a buzzword.
 - The shippable artwork lives in assets/. The UI direction is System: stock macOS materials, SF Pro, with Honeycrisp red #C5453A as the accent and the hand-built app icons. The wordmark is Honeycrisp in Sora semibold at -0.03em tracking with a brand-red period.
+- Settings is a toolbar-tabbed window (HC-043): General, Server, Remote Access, and Activity, each a grouped form at one fixed width with its height from its content, so the window resizes per tab and fits a 13-inch laptop screen. A new setting joins the tab it belongs to; a new tab is only for a new area. Button titles use title case, as macOS buttons do; labels and footers stay sentence case.
 
 ## Website
 
